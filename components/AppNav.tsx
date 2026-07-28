@@ -6,7 +6,7 @@ import { useState } from "react";
 import {
   BookOpen, BrainCircuit, ChevronRight, CircleUserRound, Clock3, Compass,
   GraduationCap, History, Home, Languages, Library,
-  Menu, MessageCircle, Mic2, Search, Sparkles, SpellCheck2,
+  Menu, MessageCircle, Mic2, Search, Sparkles, SpellCheck2, AudioLines,
   Target, Trophy, X,
 } from "lucide-react";
 
@@ -24,6 +24,7 @@ const groups = [
       { href: "/learn", label: "Lộ trình A0–C2", icon: GraduationCap },
       { href: "/topics", label: "Học theo chủ đề", icon: Compass },
       { href: "/grammar", label: "Ngữ pháp", icon: SpellCheck2 },
+      { href: "/pronunciation", label: "Bảng IPA & phát âm", icon: AudioLines },
       { href: "/practice", label: "Phát âm & hội thoại", icon: MessageCircle },
     ],
   },
