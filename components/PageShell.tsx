@@ -36,8 +36,10 @@ export function PageShell({
           <div><p className="section-kicker">{eyebrow}</p><h1>{title}</h1></div>
           <div className="page-actions">
             {actions}
-            <button className="theme-toggle" onClick={toggleTheme} aria-label={`Chuyển sang giao diện ${theme === "light" ? "tối" : "sáng"}`}>{theme === "light" ? "◐" : "☀"}</button>
-            <Link href="/profile" className="avatar">{(profile?.display_name || "K").slice(0, 1).toUpperCase()}</Link>
+            <button className="theme-toggle" data-tooltip="Đổi giao diện" onClick={toggleTheme} aria-label={`Chuyển sang giao diện ${theme === "light" ? "tối" : "sáng"}`}>{theme === "light" ? "◐" : "☀"}</button>
+            <Link href="/profile" className="avatar" data-tooltip="Hồ sơ cá nhân" data-tour="profile">
+              {profile?.avatar_url ? <img src={profile.avatar_url} alt="" /> : (profile?.display_name || "K").slice(0, 1).toUpperCase()}
+            </Link>
           </div>
         </header>
         <div className="page-content">{children}</div>

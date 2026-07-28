@@ -14,11 +14,11 @@ const items = [
 export function AppNav() {
   const pathname = usePathname();
   return (
-    <nav className="bottom-nav" aria-label="Điều hướng chính">
+    <nav className="bottom-nav" aria-label="Điều hướng chính" data-tour="navigation">
       {items.map((item) => {
         const selected = item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
         return (
-          <Link key={item.href} href={item.href} className={selected ? "selected" : ""}>
+          <Link key={item.href} href={item.href} className={selected ? "selected" : ""} data-tooltip={item.label}>
             <span>{item.icon}</span>{item.label}
           </Link>
         );

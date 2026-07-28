@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/client";
 export type KayengProfile = {
   id: string;
   display_name: string | null;
+  avatar_url: string | null;
   role: "learner" | "teacher" | "content_editor" | "reviewer" | "support" | "admin";
   cefr_level: string;
   occupation: string | null;
@@ -28,7 +29,7 @@ export function useAuth() {
       if (data.user) {
         const { data: profileData } = await supabase
           .from("profiles")
-          .select("id,display_name,role,cefr_level,occupation,daily_goal_minutes,learning_goal,onboarding_completed")
+          .select("id,display_name,avatar_url,role,cefr_level,occupation,daily_goal_minutes,learning_goal,onboarding_completed")
           .eq("id", data.user.id)
           .single();
         setProfile(profileData as KayengProfile | null);

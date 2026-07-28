@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { AppTour } from "@/components/AppTour";
+import { GlobalTooltips } from "@/components/GlobalTooltips";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://kayeng-english.nguyenkhaa223.chatgpt.site"),
@@ -29,7 +31,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
           }}
         />
       </head>
-      <body>{children}</body>
+      <body>{children}<GlobalTooltips /><AppTour /></body>
     </html>
   );
 }

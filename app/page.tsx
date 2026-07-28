@@ -6,6 +6,7 @@ import Link from "next/link";
 import { AppNav } from "@/components/AppNav";
 import { startWavRecording, type WavRecorder } from "@/lib/audio/wav-recorder";
 import { createClient } from "@/lib/supabase/client";
+import { CustomSelect, occupationOptions } from "@/components/CustomSelect";
 
 const lessons = [
   { title: "Chào hỏi tự nhiên", detail: "Từ vựng • 4 phút", status: "done", icon: "Aa" },
@@ -258,6 +259,8 @@ export default function Home() {
             </button>
             <button
               className="avatar"
+              data-tour="profile"
+              data-tooltip="Hồ sơ cá nhân"
               aria-label={user ? "Đăng xuất" : "Đăng nhập"}
               onClick={() => (user ? supabaseRef.current.auth.signOut() : setAuthOpen(true))}
             >
@@ -267,7 +270,7 @@ export default function Home() {
         </header>
 
         <div className="content">
-          <article className="goal-card">
+          <article className="goal-card" data-tour="daily-plan">
             <div className="goal-head">
               <div>
                 <p className="section-kicker">MỤC TIÊU HÔM NAY</p>
@@ -290,7 +293,7 @@ export default function Home() {
               </div>
               <Link href="/learn">Xem tất cả</Link>
             </div>
-            <div className="lesson-list">
+            <div className="lesson-list" data-tour="continue-learning">
               {(dbLessons.length
                 ? dbLessons.slice(0, 3).map((lesson, index) => ({
                     id: lesson.id,
@@ -403,7 +406,7 @@ export default function Home() {
               <h3>Bắt đầu đúng với mục tiêu của bạn</h3>
               <div className="form-grid">
                 <label>Tên hiển thị<input name="displayName" defaultValue={displayName} required /></label>
-                <label>Nghề nghiệp<input name="occupation" placeholder="Sinh viên, thiết kế..." /></label>
+                <label>Nghề nghiệp<CustomSelect name="occupation" options={occupationOptions} placeholder="Chọn lĩnh vực của bạn" /></label>
                 <label>Trình độ<select name="level" defaultValue="A1"><option>A0</option><option>A1</option><option>A2</option><option>B1</option><option>B2</option></select></label>
                 <label>Phút học mỗi ngày<select name="dailyMinutes" defaultValue="15"><option value="10">10 phút</option><option value="15">15 phút</option><option value="20">20 phút</option><option value="30">30 phút</option></select></label>
               </div>
