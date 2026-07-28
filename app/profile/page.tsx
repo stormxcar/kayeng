@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { PageShell } from "@/components/PageShell";
-import { CustomSelect, occupationOptions } from "@/components/CustomSelect";
+import { accentOptions, CustomSelect, dailyGoalOptions, levelOptions, occupationOptions } from "@/components/CustomSelect";
 import { useAuth } from "@/lib/hooks/use-auth";
 
 export default function ProfilePage() {
@@ -13,6 +13,7 @@ export default function ProfilePage() {
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState("");
+  const [formError, setFormError] = useState("");
   const [stats, setStats] = useState({ lessons: 0, recordings: 0, streak: 0 });
 
   useEffect(() => {
@@ -72,14 +73,24 @@ export default function ProfilePage() {
     event.preventDefault();
     if (!user) return;
     const form = new FormData(event.currentTarget);
-    await supabase.from("profiles").update({
-      display_name: form.get("displayName"),
-      occupation: form.get("occupation"),
-      cefr_level: form.get("level"),
-      learning_goal: form.get("goal"),
-      daily_goal_minutes: Number(form.get("minutes")),
-      preferred_accent: form.get("accent"),
+    const displayName = String(form.get("displayName") || "").trim();
+    const occupation = String(form.get("occupation") || "");
+    const level = String(form.get("level") || "");
+    const goal = String(form.get("goal") || "").trim();
+    const minutes = Number(form.get("minutes"));
+    const accent = String(form.get("accent") || "");
+    if (displayName.length < 2 || displayName.length > 50) return setFormError("Tên hiển thị phải có từ 2 đến 50 ký tự.");
+    if (!occupationOptions.some((item) => item.value === occupation)) return setFormError("Vui lòng chọn nghề nghiệp hợp lệ.");
+    if (!levelOptions.some((item) => item.value === level)) return setFormError("Trình độ không hợp lệ.");
+    if (!dailyGoalOptions.some((item) => Number(item.value) === minutes)) return setFormError("Mục tiêu thời gian không hợp lệ.");
+    if (!accentOptions.some((item) => item.value === accent)) return setFormError("Giọng ưu tiên không hợp lệ.");
+    if (goal.length > 300) return setFormError("Mục tiêu học tập không được vượt quá 300 ký tự.");
+    setFormError("");
+    const { error } = await supabase.from("profiles").update({
+      display_name: displayName, occupation, cefr_level: level, learning_goal: goal,
+      daily_goal_minutes: minutes, preferred_accent: accent,
     }).eq("id", user.id);
+    if (error) return setFormError(error.message);
     setSaved(true);
     window.setTimeout(() => setSaved(false), 2200);
   }
@@ -104,8 +115,9 @@ export default function ProfilePage() {
             <div className="profile-stats"><div><strong>{stats.lessons}</strong><small>Bài học</small></div><div><strong>{stats.recordings}</strong><small>Bản ghi</small></div><div><strong>{stats.streak}</strong><small>Streak</small></div></div>
           </aside>
           <form className="profile-form" onSubmit={save}>
-            <div className="form-section"><p className="section-kicker">THÔNG TIN CÁ NHÂN</p><div className="form-grid"><label>Tên hiển thị<input name="displayName" defaultValue={profile.display_name || ""} /></label><label>Nghề nghiệp<CustomSelect name="occupation" options={occupationOptions} defaultValue={profile.occupation} /></label></div></div>
-            <div className="form-section"><p className="section-kicker">CÀI ĐẶT HỌC</p><div className="form-grid"><label>Trình độ<select name="level" defaultValue={profile.cefr_level}>{["A0","A1","A2","B1","B2"].map((level) => <option key={level}>{level}</option>)}</select></label><label>Mục tiêu mỗi ngày<select name="minutes" defaultValue={profile.daily_goal_minutes}>{[10,15,20,30,45].map((minutes) => <option value={minutes} key={minutes}>{minutes} phút</option>)}</select></label><label>Giọng ưu tiên<select name="accent" defaultValue="american"><option value="american">Anh-Mỹ</option><option value="british">Anh-Anh</option></select></label></div><label>Mục tiêu<textarea name="goal" defaultValue={profile.learning_goal || ""} /></label></div>
+            <div className="form-section"><p className="section-kicker">THÔNG TIN CÁ NHÂN</p><div className="form-grid"><label>Tên hiển thị<input name="displayName" defaultValue={profile.display_name || ""} minLength={2} maxLength={50} required /></label><label>Nghề nghiệp<CustomSelect name="occupation" options={occupationOptions} defaultValue={profile.occupation} required /></label></div></div>
+            <div className="form-section"><p className="section-kicker">CÀI ĐẶT HỌC</p><div className="form-grid"><label>Trình độ<CustomSelect name="level" options={levelOptions} defaultValue={profile.cefr_level} required /></label><label>Mục tiêu mỗi ngày<CustomSelect name="minutes" options={dailyGoalOptions} defaultValue={String(profile.daily_goal_minutes)} required /></label><label>Giọng ưu tiên<CustomSelect name="accent" options={accentOptions} defaultValue={profile.preferred_accent} required /></label></div><label>Mục tiêu<textarea name="goal" defaultValue={profile.learning_goal || ""} maxLength={300} /></label></div>
+            {formError && <p className="form-message" role="alert">{formError}</p>}
             <button className="lesson-primary">{saved ? "✓ Đã lưu" : "Lưu thay đổi"}</button>
           </form>
         </div>

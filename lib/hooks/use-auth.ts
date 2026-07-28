@@ -12,6 +12,7 @@ export type KayengProfile = {
   cefr_level: string;
   occupation: string | null;
   daily_goal_minutes: number;
+  preferred_accent: "american" | "british";
   learning_goal: string | null;
   onboarding_completed: boolean;
 };
@@ -29,7 +30,7 @@ export function useAuth() {
       if (data.user) {
         const { data: profileData } = await supabase
           .from("profiles")
-          .select("id,display_name,avatar_url,role,cefr_level,occupation,daily_goal_minutes,learning_goal,onboarding_completed")
+          .select("id,display_name,avatar_url,role,cefr_level,occupation,daily_goal_minutes,preferred_accent,learning_goal,onboarding_completed")
           .eq("id", data.user.id)
           .single();
         setProfile(profileData as KayengProfile | null);

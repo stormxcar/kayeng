@@ -3,10 +3,12 @@
 import { useEffect, useRef, useState } from "react";
 import type { User } from "@supabase/supabase-js";
 import Link from "next/link";
+import Image from "next/image";
+import { ArrowUpRight, BookOpenCheck, Flame, Headphones, Mic, Moon, Play, Sun } from "lucide-react";
 import { AppNav } from "@/components/AppNav";
 import { startWavRecording, type WavRecorder } from "@/lib/audio/wav-recorder";
 import { createClient } from "@/lib/supabase/client";
-import { CustomSelect, occupationOptions } from "@/components/CustomSelect";
+import { CustomSelect, dailyGoalOptions, levelOptions, occupationOptions } from "@/components/CustomSelect";
 
 const lessons = [
   { title: "Chào hỏi tự nhiên", detail: "Từ vựng • 4 phút", status: "done", icon: "Aa" },
@@ -102,13 +104,22 @@ export default function Home() {
 
   async function submitAuth(event: React.FormEvent) {
     event.preventDefault();
+    const normalizedEmail = email.trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(normalizedEmail)) {
+      setAuthError("Vui lòng nhập địa chỉ email hợp lệ.");
+      return;
+    }
+    if (password.length < 8 || !/[A-Za-z]/.test(password) || !/\d/.test(password)) {
+      setAuthError("Mật khẩu cần ít nhất 8 ký tự, gồm cả chữ và số.");
+      return;
+    }
     setBusy(true);
     setAuthError("");
     const supabase = supabaseRef.current;
     const action =
       authMode === "login"
-        ? supabase.auth.signInWithPassword({ email, password })
-        : supabase.auth.signUp({ email, password, options: { data: { display_name: email.split("@")[0] } } });
+        ? supabase.auth.signInWithPassword({ email: normalizedEmail, password })
+        : supabase.auth.signUp({ email: normalizedEmail, password, options: { data: { display_name: normalizedEmail.split("@")[0] } } });
     const { data, error } = await action;
     setBusy(false);
     if (error) {
@@ -126,15 +137,26 @@ export default function Home() {
     event.preventDefault();
     if (!user) return;
     const form = new FormData(event.currentTarget);
+    const displayNameValue = String(form.get("displayName") || "").trim();
+    const learningGoalValue = String(form.get("learningGoal") || "").trim();
+    const occupationValue = String(form.get("occupation") || "");
+    const levelValue = String(form.get("level") || "");
+    const minutesValue = Number(form.get("dailyMinutes"));
+    if (displayNameValue.length < 2 || displayNameValue.length > 50) return setAuthError("Tên hiển thị phải có từ 2 đến 50 ký tự.");
+    if (!occupationOptions.some((item) => item.value === occupationValue)) return setAuthError("Vui lòng chọn nghề nghiệp.");
+    if (!levelOptions.some((item) => item.value === levelValue)) return setAuthError("Vui lòng chọn trình độ hợp lệ.");
+    if (!dailyGoalOptions.some((item) => Number(item.value) === minutesValue)) return setAuthError("Mục tiêu thời gian không hợp lệ.");
+    if (learningGoalValue.length < 10 || learningGoalValue.length > 300) return setAuthError("Mục tiêu học tập cần từ 10 đến 300 ký tự.");
+    setAuthError("");
     setBusy(true);
     const { data } = await supabaseRef.current
       .from("profiles")
       .update({
-        display_name: form.get("displayName"),
-        learning_goal: form.get("learningGoal"),
-        occupation: form.get("occupation"),
-        daily_goal_minutes: Number(form.get("dailyMinutes")),
-        cefr_level: form.get("level"),
+        display_name: displayNameValue,
+        learning_goal: learningGoalValue,
+        occupation: occupationValue,
+        daily_goal_minutes: minutesValue,
+        cefr_level: levelValue,
         onboarding_completed: true,
       })
       .eq("id", user.id)
@@ -255,7 +277,7 @@ export default function Home() {
           </div>
           <div className="top-actions">
             <button className="theme-toggle" aria-label={`Chuyển sang giao diện ${theme === "light" ? "tối" : "sáng"}`} onClick={toggleTheme}>
-              {theme === "light" ? "◐" : "☀"}
+              {theme === "light" ? <Moon size={20} /> : <Sun size={20} />}
             </button>
             <button
               className="avatar"
@@ -270,13 +292,22 @@ export default function Home() {
         </header>
 
         <div className="content">
+          <section className="home-learning-story">
+            <div className="home-story-copy">
+              <span className="story-label"><BookOpenCheck size={16} /> LỘ TRÌNH CỦA RIÊNG BẠN</span>
+              <h3>Mỗi ngày một chút.<br />Tự tin đến rất gần.</h3>
+              <p>Kayeng kết hợp từ vựng, ngữ pháp, nghe và nói trong những tình huống bạn thực sự gặp.</p>
+              <div><Link href="/topics">Chọn chủ đề <ArrowUpRight size={17} /></Link><Link href="/dictionary">Tra từ mới</Link></div>
+            </div>
+            <Image src="/kayeng-learning-hero.webp" alt="Người học đang luyện nói tiếng Anh cùng Kayeng" width={1440} height={810} priority sizes="(max-width: 900px) 100vw, 420px" />
+          </section>
           <article className="goal-card" data-tour="daily-plan">
             <div className="goal-head">
               <div>
                 <p className="section-kicker">MỤC TIÊU HÔM NAY</p>
                 <h3>15 phút luyện tập</h3>
               </div>
-              <div className="streak"><span>◆</span> {learningStats.streak} ngày</div>
+              <div className="streak"><Flame size={16} /> {learningStats.streak} ngày</div>
             </div>
             <div className="progress-line"><span style={{ width: `${Math.min(100, Math.round((learningStats.completedMinutes / Math.max(learningStats.targetMinutes, 1)) * 100))}%` }} /></div>
             <div className="goal-foot">
@@ -338,7 +369,7 @@ export default function Home() {
                 disabled={busy}
                 aria-label={recording ? "Dừng ghi âm" : "Bắt đầu ghi âm"}
               >
-                {recording ? "■" : "●"}
+                {recording ? "■" : <Mic size={25} />}
               </button>
               <span>{recording ? `${seconds}s • Chạm để dừng` : "Chạm để nói"}</span>
             </div>
@@ -375,6 +406,11 @@ export default function Home() {
               <div><small>LỊCH SỬ LUYỆN NÓI</small><strong>{learningStats.recordings} bản ghi</strong></div>
             </article>
           </section>
+
+          <section className="home-media-section">
+            <div className="media-copy"><span><Headphones size={18} /> VIDEO TUẦN NÀY</span><h3>120 câu tiếng Anh dùng mỗi ngày</h3><p>Nghe, dừng và shadowing theo từng câu. Phù hợp cho người học A1–A2 muốn xây phản xạ giao tiếp.</p><Link href="/library"><Play size={16} fill="currentColor" /> Mở thư viện</Link></div>
+            <div className="video-frame"><iframe src="https://www.youtube-nocookie.com/embed/xtcH9aDvAVI" title="Daily English sentences for speaking practice" loading="lazy" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowFullScreen /></div>
+          </section>
         </div>
 
         <AppNav />
@@ -387,7 +423,7 @@ export default function Home() {
               <h3>{authMode === "login" ? "Chào mừng bạn trở lại" : "Tạo tài khoản học"}</h3>
               <p>Lưu tiến độ, streak và kết quả luyện nói trên mọi thiết bị.</p>
               <label>Email<input type="email" required value={email} onChange={(event) => setEmail(event.target.value)} /></label>
-              <label>Mật khẩu<input type="password" minLength={6} required value={password} onChange={(event) => setPassword(event.target.value)} /></label>
+              <label>Mật khẩu<input type="password" minLength={8} maxLength={72} autoComplete={authMode === "login" ? "current-password" : "new-password"} required value={password} onChange={(event) => setPassword(event.target.value)} /></label>
               {authError && <div className="form-message">{authError}</div>}
               <button className="primary-action" disabled={busy} aria-label={authMode === "login" ? "Đăng nhập" : "Đăng ký"}>
                 {busy ? <span className="spinner" aria-hidden="true" /> : authMode === "login" ? "Đăng nhập" : "Đăng ký"}
@@ -405,12 +441,13 @@ export default function Home() {
               <p className="section-kicker">LỘ TRÌNH CÁ NHÂN</p>
               <h3>Bắt đầu đúng với mục tiêu của bạn</h3>
               <div className="form-grid">
-                <label>Tên hiển thị<input name="displayName" defaultValue={displayName} required /></label>
+                <label>Tên hiển thị<input name="displayName" defaultValue={displayName} minLength={2} maxLength={50} required /></label>
                 <label>Nghề nghiệp<CustomSelect name="occupation" options={occupationOptions} placeholder="Chọn lĩnh vực của bạn" /></label>
-                <label>Trình độ<select name="level" defaultValue="A1"><option>A0</option><option>A1</option><option>A2</option><option>B1</option><option>B2</option></select></label>
-                <label>Phút học mỗi ngày<select name="dailyMinutes" defaultValue="15"><option value="10">10 phút</option><option value="15">15 phút</option><option value="20">20 phút</option><option value="30">30 phút</option></select></label>
+                <label>Trình độ<CustomSelect name="level" options={levelOptions} defaultValue="A1" required /></label>
+                <label>Phút học mỗi ngày<CustomSelect name="dailyMinutes" options={dailyGoalOptions} defaultValue="15" required /></label>
               </div>
-              <label>Mục tiêu<textarea name="learningGoal" placeholder="Tự tin giao tiếp trong công việc..." required /></label>
+              <label>Mục tiêu<textarea name="learningGoal" placeholder="Tự tin giao tiếp trong công việc..." minLength={10} maxLength={300} required /></label>
+              {authError && <p className="form-message" role="alert">{authError}</p>}
               <button className="primary-action" disabled={busy} aria-label="Tạo lộ trình">
                 {busy ? <span className="spinner" aria-hidden="true" /> : "Tạo lộ trình"}
               </button>

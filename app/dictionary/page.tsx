@@ -7,7 +7,7 @@ import { useDebounce } from "@/lib/hooks/use-debounce";
 import { useAuth } from "@/lib/hooks/use-auth";
 
 type Result = {
-  word: string; phonetic: string; phonetics: string[]; audio: string; related: string[]; attribution: string;
+  word: string; phonetic: string; phonetics: string[]; audio: string; related: string[]; attribution: string; vietnameseDefinition?: string;
   meanings: Array<{ partOfSpeech: string; definitions: Array<{ definition: string; example?: string }>; synonyms: string[]; antonyms: string[] }>;
 };
 
@@ -73,7 +73,7 @@ export default function DictionaryPage() {
             </div>
           </header>
           <div className="meaning-layout">
-            <main>{result.meanings.map((meaning, index) => <section className="meaning-card" key={`${meaning.partOfSpeech}-${index}`}><div className="part-of-speech">{meaning.partOfSpeech}</div>{meaning.definitions.map((definition, definitionIndex) => <div className="definition" key={definitionIndex}><b>{definitionIndex + 1}</b><div><p>{definition.definition}</p>{definition.example && <blockquote>“{definition.example}”</blockquote>}</div></div>)}{meaning.synonyms.length > 0 && <div className="word-chips"><strong>Đồng nghĩa</strong>{meaning.synonyms.map((word) => <button onClick={() => lookup(word)} key={word}>{word}</button>)}</div>}{meaning.antonyms.length > 0 && <div className="word-chips antonyms"><strong>Trái nghĩa</strong>{meaning.antonyms.map((word) => <button onClick={() => lookup(word)} key={word}>{word}</button>)}</div>}</section>)}</main>
+            <main>{result.vietnameseDefinition && <section className="meaning-card vietnamese-meaning"><div className="part-of-speech">nghĩa tiếng Việt</div><h2>{result.vietnameseDefinition}</h2><small>Nội dung đã được biên tập trong Kayeng CMS.</small></section>}{result.meanings.map((meaning, index) => <section className="meaning-card" key={`${meaning.partOfSpeech}-${index}`}><div className="part-of-speech">{meaning.partOfSpeech}</div>{meaning.definitions.map((definition, definitionIndex) => <div className="definition" key={definitionIndex}><b>{definitionIndex + 1}</b><div><p>{definition.definition}</p>{definition.example && <blockquote>“{definition.example}”</blockquote>}</div></div>)}{meaning.synonyms.length > 0 && <div className="word-chips"><strong>Đồng nghĩa</strong>{meaning.synonyms.map((word) => <button onClick={() => lookup(word)} key={word}>{word}</button>)}</div>}{meaning.antonyms.length > 0 && <div className="word-chips antonyms"><strong>Trái nghĩa</strong>{meaning.antonyms.map((word) => <button onClick={() => lookup(word)} key={word}>{word}</button>)}</div>}</section>)}</main>
             <aside><h3>Từ liên quan</h3><div className="related-grid">{result.related.map((word) => <button onClick={() => lookup(word)} key={word}>{word}</button>)}</div><div className="practice-prompt"><Headphones size={22} /><b>Biến từ này thành kỹ năng</b><p>Lưu từ để đưa vào hàng đợi flashcard và ôn tập.</p></div><small>{result.attribution}</small></aside>
           </div>
         </article>
