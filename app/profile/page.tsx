@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { PageShell } from "@/components/PageShell";
 import { accentOptions, CustomSelect, dailyGoalOptions, levelOptions, occupationOptions } from "@/components/CustomSelect";
 import { useAuth } from "@/lib/hooks/use-auth";
+import { TaskOverlayBridge, useTaskOverlay } from "@/components/TaskOverlay";
 
 export default function ProfilePage() {
   const { user, profile, supabase, loading } = useAuth();
@@ -15,6 +16,7 @@ export default function ProfilePage() {
   const [uploadError, setUploadError] = useState("");
   const [formError, setFormError] = useState("");
   const [stats, setStats] = useState({ lessons: 0, recordings: 0, streak: 0 });
+  const { runTask } = useTaskOverlay();
 
   useEffect(() => {
     if (!user) return;
@@ -86,17 +88,20 @@ export default function ProfilePage() {
     if (!accentOptions.some((item) => item.value === accent)) return setFormError("Giọng ưu tiên không hợp lệ.");
     if (goal.length > 300) return setFormError("Mục tiêu học tập không được vượt quá 300 ký tự.");
     setFormError("");
-    const { error } = await supabase.from("profiles").update({
-      display_name: displayName, occupation, cefr_level: level, learning_goal: goal,
-      daily_goal_minutes: minutes, preferred_accent: accent,
-    }).eq("id", user.id);
-    if (error) return setFormError(error.message);
-    setSaved(true);
-    window.setTimeout(() => setSaved(false), 2200);
+    await runTask("Đang lưu hồ sơ học tập…", async () => {
+      const { error } = await supabase.from("profiles").update({
+        display_name: displayName, occupation, cefr_level: level, learning_goal: goal,
+        daily_goal_minutes: minutes, preferred_accent: accent,
+      }).eq("id", user.id);
+      if (error) return setFormError(error.message);
+      setSaved(true);
+      window.setTimeout(() => setSaved(false), 2200);
+    });
   }
 
   return (
     <PageShell eyebrow="TÀI KHOẢN" title="Hồ sơ học tập" actions={profile?.role === "admin" ? <Link className="admin-link" href="/admin">Mở Admin</Link> : undefined}>
+      <TaskOverlayBridge active={uploading} label="Đang tải và lưu ảnh đại diện…" />
       {!loading && !user ? <div className="empty-state"><h2>Bạn chưa đăng nhập</h2><Link href="/">Đăng nhập tại trang chủ</Link></div> : profile && (
         <div className="profile-layout">
           <aside className="profile-summary">

@@ -9,6 +9,7 @@ import { AppNav } from "@/components/AppNav";
 import { startWavRecording, type WavRecorder } from "@/lib/audio/wav-recorder";
 import { createClient } from "@/lib/supabase/client";
 import { CustomSelect, dailyGoalOptions, levelOptions, occupationOptions } from "@/components/CustomSelect";
+import { TaskOverlayBridge } from "@/components/TaskOverlay";
 
 const lessons = [
   { title: "Chào hỏi tự nhiên", detail: "Từ vựng • 4 phút", status: "done", icon: "Aa" },
@@ -255,6 +256,8 @@ export default function Home() {
   const displayName = (profile?.display_name as string) || user?.email?.split("@")[0] || "Minh";
 
   return (
+    <>
+      <TaskOverlayBridge active={busy} label={recording ? "Đang hoàn tất bản ghi âm…" : "Đang lưu và đồng bộ dữ liệu…"} />
     <main>
       <section className="desktop-rail" aria-label="Thương hiệu">
         <div className="brand-mark">K</div>
@@ -456,5 +459,6 @@ export default function Home() {
         )}
       </section>
     </main>
+    </>
   );
 }

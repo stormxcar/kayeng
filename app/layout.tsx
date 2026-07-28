@@ -3,6 +3,7 @@ import "./globals.css";
 import { AppTour } from "@/components/AppTour";
 import { GlobalTooltips } from "@/components/GlobalTooltips";
 import { NavigationProgress } from "@/components/NavigationProgress";
+import { TaskOverlayProvider } from "@/components/TaskOverlay";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://kayeng-english.nguyenkhaa223.chatgpt.site"),
@@ -32,7 +33,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
           }}
         />
       </head>
-      <body>{children}<NavigationProgress /><GlobalTooltips /><AppTour /></body>
+      <body><TaskOverlayProvider>{children}<NavigationProgress /><GlobalTooltips /><AppTour /></TaskOverlayProvider></body>
     </html>
   );
 }

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { PageShell } from "@/components/PageShell";
 import { createClient } from "@/lib/supabase/client";
+import { ArrowRight, Bot, Mic2, Sparkles } from "lucide-react";
 
 type Practice = { id: string; title: string; instructions: string | null; activity_type: string; lessons: { id: string; title: string } };
 
@@ -20,8 +21,8 @@ export default function PracticePage() {
     <PageShell eyebrow="SPEAKING LAB" title="Luyện nói">
       <div className="capability-strip"><span className={capabilities.pronunciation ? "online" : ""}>● Chấm phát âm</span><span className={capabilities.ai ? "online" : ""}>● AI Role-play</span><span>○ Realtime voice — sắp ra mắt</span></div>
       <div className="practice-grid">
-        <Link href={items[0] ? `/lesson/${items[0].lessons.id}` : "/learn"} className="practice-feature"><span>◉</span><div><small>LUYỆN NHANH</small><h2>Đọc và nhận phản hồi</h2><p>Ghi âm WAV, nghe lại và xem điểm từng từ khi Azure được cấu hình.</p></div><b>→</b></Link>
-        {items.map((item) => <article className="practice-card" key={item.id}><span>{item.activity_type === "roleplay" ? "✦" : "●"}</span><div><small>{item.lessons?.title}</small><h2>{item.title}</h2><p>{item.instructions}</p></div><Link href="/learn">Mở bài học →</Link></article>)}
+        <Link href={items[0] ? `/lesson/${items[0].lessons.id}` : "/learn"} className="practice-feature"><span><Mic2 size={42}/></span><div><small>LUYỆN NHANH</small><h2>Đọc và nhận phản hồi</h2><p>Ghi âm WAV, nghe lại và xem điểm từng từ khi Azure được cấu hình.</p></div><b><ArrowRight/></b></Link>
+        {items.map((item) => <article className="practice-card" key={item.id}><span>{item.activity_type === "roleplay" ? <Bot/> : <Sparkles/>}</span><div><small>{item.lessons?.title}</small><h2>{item.title}</h2><p>{item.instructions}</p></div><Link href={`/lesson/${item.lessons.id}`}>Mở bài học <ArrowRight size={14}/></Link></article>)}
       </div>
     </PageShell>
   );

@@ -5,6 +5,7 @@ import { Bookmark, BookmarkCheck, Headphones, LoaderCircle, Search, Sparkles, Vo
 import { PageShell } from "@/components/PageShell";
 import { useDebounce } from "@/lib/hooks/use-debounce";
 import { useAuth } from "@/lib/hooks/use-auth";
+import { useTaskOverlay } from "@/components/TaskOverlay";
 
 type Result = {
   word: string; phonetic: string; phonetics: string[]; audio: string; related: string[]; attribution: string; vietnameseDefinition?: string;
@@ -21,6 +22,7 @@ export default function DictionaryPage() {
   const [error, setError] = useState("");
   const [saved, setSaved] = useState(false);
   const audio = useRef<HTMLAudioElement>(null);
+  const { runTask } = useTaskOverlay();
 
   useEffect(() => {
     if (debounced.length < 2 || result?.word === debounced.toLowerCase()) { setSuggestions([]); return; }
@@ -33,22 +35,27 @@ export default function DictionaryPage() {
   async function lookup(word: string) {
     if (!word.trim()) return;
     setQuery(word.trim()); setSuggestions([]); setLoading(true); setError(""); setSaved(false);
-    const response = await fetch(`/api/dictionary?word=${encodeURIComponent(word.trim())}`);
-    const data = await response.json();
-    setLoading(false);
-    if (!response.ok) { setResult(null); setError(data.error); return; }
-    setResult(data);
-    if (user) {
-      supabase.from("dictionary_search_history").insert({ user_id: user.id, query: word.trim().toLowerCase() }).then(() => {});
-      supabase.from("user_vocabulary").select("word").eq("user_id", user.id).eq("word", data.word).maybeSingle().then(({ data: item }) => setSaved(Boolean(item)));
-    }
+    await runTask(`Đang tra nghĩa của “${word.trim()}”…`, async () => {
+      try {
+        const response = await fetch(`/api/dictionary?word=${encodeURIComponent(word.trim())}`);
+        const data = await response.json();
+        if (!response.ok) { setResult(null); setError(data.error); return; }
+        setResult(data);
+        if (user) {
+          supabase.from("dictionary_search_history").insert({ user_id: user.id, query: word.trim().toLowerCase() }).then(() => {});
+          supabase.from("user_vocabulary").select("word").eq("user_id", user.id).eq("word", data.word).maybeSingle().then(({ data: item }) => setSaved(Boolean(item)));
+        }
+      } finally { setLoading(false); }
+    });
   }
 
   async function toggleSave() {
     if (!user || !result) return;
-    if (saved) await supabase.from("user_vocabulary").delete().eq("user_id", user.id).eq("word", result.word);
-    else await supabase.from("user_vocabulary").upsert({ user_id: user.id, word: result.word, phonetic: result.phonetic, definition: result.meanings[0]?.definitions[0]?.definition || "", source: "dictionaryapi.dev" });
-    setSaved(!saved);
+    await runTask(saved ? "Đang bỏ từ khỏi sổ tay…" : "Đang lưu vào sổ từ…", async () => {
+      if (saved) await supabase.from("user_vocabulary").delete().eq("user_id", user.id).eq("word", result.word);
+      else await supabase.from("user_vocabulary").upsert({ user_id: user.id, word: result.word, phonetic: result.phonetic, definition: result.meanings[0]?.definitions[0]?.definition || "", source: "dictionaryapi.dev" });
+      setSaved(!saved);
+    });
   }
 
   return (

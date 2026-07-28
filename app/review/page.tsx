@@ -5,6 +5,7 @@ import { Brain, Check, RotateCcw, Volume2 } from "lucide-react";
 import { createEmptyCard, fsrs, Rating, type CardInput, type Grade } from "ts-fsrs";
 import { PageShell } from "@/components/PageShell";
 import { useAuth } from "@/lib/hooks/use-auth";
+import { useTaskOverlay } from "@/components/TaskOverlay";
 
 type VocabularyCard = { id: string; word: string; phonetic: string | null; definition: string | null; fsrs_card: CardInput | null };
 const scheduler = fsrs({ request_retention: .9, maximum_interval: 3650, enable_fuzz: true, enable_short_term: true });
@@ -16,6 +17,7 @@ export default function ReviewPage() {
   const [revealed, setRevealed] = useState(false);
   const [reviewed, setReviewed] = useState(0);
   const current = cards[index];
+  const { runTask } = useTaskOverlay();
 
   useEffect(() => {
     if (!user) return;
@@ -31,8 +33,9 @@ export default function ReviewPage() {
 
   async function rate(rating: Grade) {
     if (!current) return;
-    const result = scheduler.next(current.fsrs_card || createEmptyCard(), new Date(), rating);
-    await supabase.from("user_vocabulary").update({
+    await runTask("Đang tính lịch ôn tập tiếp theo…", async () => {
+      const result = scheduler.next(current.fsrs_card || createEmptyCard(), new Date(), rating);
+      await supabase.from("user_vocabulary").update({
       fsrs_card: result.card,
       next_review_at: result.card.due.toISOString(),
       interval_days: result.card.scheduled_days,
@@ -40,10 +43,11 @@ export default function ReviewPage() {
       mastery: Math.min(100, Math.round(result.card.stability * 6)),
       last_rating: rating,
       last_reviewed_at: new Date().toISOString(),
-    }).eq("id", current.id);
-    setReviewed((value) => value + 1);
-    setIndex((value) => value + 1);
-    setRevealed(false);
+      }).eq("id", current.id);
+      setReviewed((value) => value + 1);
+      setIndex((value) => value + 1);
+      setRevealed(false);
+    });
   }
 
   const interval = (rating: Grade) => {

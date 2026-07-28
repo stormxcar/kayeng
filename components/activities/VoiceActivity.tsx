@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import type { Activity } from "./ActivityRenderer";
 import { startWavRecording, type WavRecorder } from "@/lib/audio/wav-recorder";
 import { createClient } from "@/lib/supabase/client";
+import { TaskOverlayBridge } from "@/components/TaskOverlay";
 
 type Assessment = {
   score?: number;
@@ -80,6 +81,7 @@ export default function VoiceActivity({ activity, onComplete }: { activity: Acti
 
   return (
     <div className="activity-panel voice-panel">
+      <TaskOverlayBridge active={busy} label="Đang tải bản ghi và chấm phát âm…" />
       <p className="activity-type">LUYỆN NÓI</p>
       <h2>{activity.title}</h2>
       <p>{activity.instructions}</p>

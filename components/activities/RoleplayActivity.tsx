@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import type { Activity } from "./ActivityRenderer";
 import { createClient } from "@/lib/supabase/client";
+import { TaskOverlayBridge } from "@/components/TaskOverlay";
 
 type Turn = { speaker: "learner" | "ai"; content: string };
 
@@ -53,6 +54,7 @@ export default function RoleplayActivity({ activity, onComplete }: { activity: A
 
   return (
     <div className="activity-panel roleplay-panel">
+      <TaskOverlayBridge active={busy} label="AI đang phân tích và chuẩn bị phản hồi…" />
       <p className="activity-type">AI ROLE-PLAY</p><h2>{activity.title}</h2><p>{activity.instructions}</p>
       <div className="conversation-log">
         {!turns.length && <div className="ai-turn">Hi! I&apos;m your new coworker. Tell me a little about yourself.</div>}
