@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useState, type ReactNode } from "react";
 import { AppNav } from "./AppNav";
 import { useAuth } from "@/lib/hooks/use-auth";
-import { Moon, Sun } from "lucide-react";
+import { Moon, PanelLeftClose, PanelLeftOpen, Sun } from "lucide-react";
 
 export function PageShell({
   eyebrow,
@@ -19,17 +19,25 @@ export function PageShell({
 }) {
   const { profile } = useAuth();
   const [theme, setTheme] = useState<"light" | "dark">("light");
+  const [collapsed, setCollapsed] = useState(false);
   useEffect(() => setTheme(document.documentElement.dataset.theme === "dark" ? "dark" : "light"), []);
+  useEffect(() => setCollapsed(localStorage.getItem("kayeng-sidebar") === "collapsed"), []);
   function toggleTheme() {
     const next = theme === "light" ? "dark" : "light";
     setTheme(next);
     document.documentElement.dataset.theme = next;
     localStorage.setItem("kayeng-theme", next);
   }
+  function toggleSidebar() {
+    setCollapsed((current) => {
+      localStorage.setItem("kayeng-sidebar", current ? "expanded" : "collapsed");
+      return !current;
+    });
+  }
   return (
-    <main className="web-app-main">
+    <main className={`web-app-main ${collapsed ? "sidebar-collapsed" : ""}`}>
       <aside className="web-sidebar">
-        <Link href="/" className="brand-link"><span className="brand-mark">K</span> Kayeng</Link>
+        <div className="sidebar-brand-row"><Link href="/" className="brand-link"><span className="brand-mark">K</span><b>Kayeng</b></Link><button onClick={toggleSidebar} aria-label={collapsed ? "Mở rộng thanh bên" : "Thu gọn thanh bên"} data-tooltip={collapsed ? "Mở rộng" : "Thu gọn"}>{collapsed ? <PanelLeftOpen size={19}/> : <PanelLeftClose size={19}/>}</button></div>
         <AppNav />
       </aside>
       <section className="web-page">
