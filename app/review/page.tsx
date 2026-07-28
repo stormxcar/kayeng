@@ -1,0 +1,3 @@
+import { Brain, CalendarClock, Layers3, RotateCcw } from "lucide-react";
+import { PageShell } from "@/components/PageShell";
+export default function ReviewPage(){return <PageShell eyebrow="SMART REVIEW" title="Ôn tập thông minh"><section className="review-hero"><Brain size={46}/><div><small>SPACED REPETITION</small><h2>12 mục đang chờ bạn</h2><p>Kayeng ưu tiên những từ và cấu trúc bạn sắp quên.</p></div><button><RotateCcw size={18}/> Bắt đầu ôn</button></section><div className="review-metrics"><article><Layers3/><b>8</b><span>Từ vựng</span></article><article><CalendarClock/><b>3</b><span>Ngữ pháp</span></article><article><RotateCcw/><b>1</b><span>Lỗi sai</span></article></div></PageShell>}

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState, type ReactNode } from "react";
 import { AppNav } from "./AppNav";
 import { useAuth } from "@/lib/hooks/use-auth";
+import { Moon, Sun } from "lucide-react";
 
 export function PageShell({
   eyebrow,
@@ -36,7 +37,7 @@ export function PageShell({
           <div><p className="section-kicker">{eyebrow}</p><h1>{title}</h1></div>
           <div className="page-actions">
             {actions}
-            <button className="theme-toggle" data-tooltip="Đổi giao diện" onClick={toggleTheme} aria-label={`Chuyển sang giao diện ${theme === "light" ? "tối" : "sáng"}`}>{theme === "light" ? "◐" : "☀"}</button>
+            <button className="theme-toggle" data-tooltip="Đổi giao diện" onClick={toggleTheme} aria-label={`Chuyển sang giao diện ${theme === "light" ? "tối" : "sáng"}`}>{theme === "light" ? <Moon size={20} /> : <Sun size={20} />}</button>
             <Link href="/profile" className="avatar" data-tooltip="Hồ sơ cá nhân" data-tour="profile">
               {profile?.avatar_url ? <img src={profile.avatar_url} alt="" /> : (profile?.display_name || "K").slice(0, 1).toUpperCase()}
             </Link>

@@ -1,0 +1,4 @@
+import { Award, Flame, Medal, Star, Trophy } from "lucide-react";
+import { PageShell } from "@/components/PageShell";
+const badges=[[Flame,"Khởi động","Học liên tiếp 3 ngày"],[Star,"Người khám phá","Hoàn thành 5 chủ đề"],[Medal,"Phát âm tốt","Đạt 80 điểm phát âm"],[Award,"Bền bỉ","Học đủ 300 phút"]];
+export default function AchievementsPage(){return <PageShell eyebrow="YOUR JOURNEY" title="Thành tích"><section className="achievement-hero"><Trophy size={52}/><div><small>TỔNG ĐIỂM KINH NGHIỆM</small><h2>1.240 XP</h2><p>Tiếp tục thêm 260 XP để lên cấp tiếp theo.</p></div></section><div className="badge-grid">{badges.map(([Icon,title,description],index)=>{const BadgeIcon=Icon as typeof Trophy;return <article className={index>1?"locked":""} key={String(title)}><span><BadgeIcon size={28}/></span><h3>{title as string}</h3><p>{description as string}</p></article>})}</div></PageShell>}
