@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { User } from "@supabase/supabase-js";
+import Link from "next/link";
+import { AppNav } from "@/components/AppNav";
 import { startWavRecording, type WavRecorder } from "@/lib/audio/wav-recorder";
 import { createClient } from "@/lib/supabase/client";
 
@@ -11,18 +13,9 @@ const lessons = [
   { title: "Hội thoại cùng Maya", detail: "Role-play • 4 phút", status: "next", icon: "✦" },
 ];
 
-const navItems = [
-  ["⌂", "Hôm nay"],
-  ["▤", "Học"],
-  ["●", "Luyện nói"],
-  ["↻", "Ôn tập"],
-  ["◒", "Tiến bộ"],
-];
-
 export default function Home() {
   const supabaseRef = useRef(createClient());
   const recorderRef = useRef<WavRecorder | null>(null);
-  const [activeNav, setActiveNav] = useState("Hôm nay");
   const [recording, setRecording] = useState(false);
   const [seconds, setSeconds] = useState(0);
   const [showResult, setShowResult] = useState(false);
@@ -39,6 +32,7 @@ export default function Home() {
   const [busy, setBusy] = useState(false);
   const [theme, setTheme] = useState<"light" | "dark">("light");
   const [dbLessons, setDbLessons] = useState<Array<{ id: string; title: string; estimated_minutes: number }>>([]);
+  const [learningStats, setLearningStats] = useState({ completedMinutes: 0, targetMinutes: 15, streak: 0, completedLessons: 0, recordings: 0 });
 
   useEffect(() => {
     if (!recording) return;
@@ -80,13 +74,29 @@ export default function Home() {
       return;
     }
     const supabase = supabaseRef.current;
-    supabase.from("profiles").select("*").eq("id", user.id).single().then(({ data }) => setProfile(data));
+    supabase.from("profiles").select("*").eq("id", user.id).single().then(({ data }) => {
+      setProfile(data);
+      if (data?.daily_goal_minutes) setLearningStats((stats) => ({ ...stats, targetMinutes: data.daily_goal_minutes }));
+    });
     supabase
       .from("lessons")
       .select("id,title,estimated_minutes")
       .eq("status", "published")
       .order("sort_order")
       .then(({ data }) => setDbLessons(data || []));
+    Promise.all([
+      supabase.from("daily_plans").select("completed_minutes,target_minutes").eq("user_id", user.id).eq("plan_date", new Date().toISOString().slice(0, 10)).maybeSingle(),
+      supabase.from("streaks").select("current_streak").eq("user_id", user.id).single(),
+      supabase.from("lesson_progress").select("*", { count: "exact", head: true }).eq("user_id", user.id).eq("status", "completed"),
+      supabase.from("audio_recordings").select("*", { count: "exact", head: true }).eq("user_id", user.id),
+    ]).then(([daily, streak, lessonsResult, recordingsResult]) => setLearningStats((stats) => ({
+      ...stats,
+      completedMinutes: daily.data?.completed_minutes || 0,
+      targetMinutes: daily.data?.target_minutes || stats.targetMinutes,
+      streak: streak.data?.current_streak || 0,
+      completedLessons: lessonsResult.count || 0,
+      recordings: recordingsResult.count || 0,
+    })));
   }, [user]);
 
   async function submitAuth(event: React.FormEvent) {
@@ -133,22 +143,13 @@ export default function Home() {
     setBusy(false);
   }
 
-  async function completeLesson(lessonId?: string, minutes = 15) {
+  function openLesson(lessonId?: string) {
     if (!user) {
       setAuthOpen(true);
       return;
     }
     if (!lessonId) return;
-    setBusy(true);
-    const { error } = await supabaseRef.current.rpc("complete_lesson", {
-      p_lesson_id: lessonId,
-      p_minutes: minutes,
-    });
-    setResult({
-      message: error ? error.message : "Tiến độ, thời gian học và streak đã được cập nhật.",
-    });
-    setShowResult(true);
-    setBusy(false);
+    window.location.assign(`/lesson/${lessonId}`);
   }
 
   async function toggleRecording() {
@@ -272,12 +273,12 @@ export default function Home() {
                 <p className="section-kicker">MỤC TIÊU HÔM NAY</p>
                 <h3>15 phút luyện tập</h3>
               </div>
-              <div className="streak"><span>◆</span> 7 ngày</div>
+              <div className="streak"><span>◆</span> {learningStats.streak} ngày</div>
             </div>
-            <div className="progress-line"><span /></div>
+            <div className="progress-line"><span style={{ width: `${Math.min(100, Math.round((learningStats.completedMinutes / Math.max(learningStats.targetMinutes, 1)) * 100))}%` }} /></div>
             <div className="goal-foot">
-              <span>6 phút đã hoàn thành</span>
-              <strong>9 phút còn lại</strong>
+              <span>{learningStats.completedMinutes} phút đã hoàn thành</span>
+              <strong>{Math.max(0, learningStats.targetMinutes - learningStats.completedMinutes)} phút còn lại</strong>
             </div>
           </article>
 
@@ -287,7 +288,7 @@ export default function Home() {
                 <p className="section-kicker">LỘ TRÌNH CÁ NHÂN</p>
                 <h3>Bài học hôm nay</h3>
               </div>
-              <button onClick={() => setActiveNav("Học")}>Xem tất cả</button>
+              <Link href="/learn">Xem tất cả</Link>
             </div>
             <div className="lesson-list">
               {(dbLessons.length
@@ -304,7 +305,7 @@ export default function Home() {
                 <button
                   className={`lesson ${lesson.status}`}
                   key={lesson.title}
-                  onClick={() => completeLesson(lesson.id, lesson.minutes)}
+                  onClick={() => openLesson(lesson.id)}
                   disabled={busy}
                 >
                   <span className="lesson-index">{lesson.status === "done" ? "✓" : lesson.icon}</span>
@@ -364,22 +365,16 @@ export default function Home() {
           <section className="insight-row">
             <article>
               <span className="insight-icon">↗</span>
-              <div><small>TIẾN BỘ TUẦN NÀY</small><strong>+12% độ trôi chảy</strong></div>
+              <div><small>BÀI ĐÃ HOÀN THÀNH</small><strong>{learningStats.completedLessons} bài học</strong></div>
             </article>
             <article>
               <span className="insight-icon warm">◎</span>
-              <div><small>CẦN ÔN HÔM NAY</small><strong>8 từ • 2 âm</strong></div>
+              <div><small>LỊCH SỬ LUYỆN NÓI</small><strong>{learningStats.recordings} bản ghi</strong></div>
             </article>
           </section>
         </div>
 
-        <nav className="bottom-nav" aria-label="Điều hướng chính">
-          {navItems.map(([icon, label]) => (
-            <button key={label} className={activeNav === label ? "selected" : ""} onClick={() => setActiveNav(label)}>
-              <span>{icon}</span>{label}
-            </button>
-          ))}
-        </nav>
+        <AppNav />
 
         {authOpen && (
           <div className="modal-backdrop" role="dialog" aria-modal="true" aria-label="Đăng nhập Kayeng">

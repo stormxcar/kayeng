@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createAuthenticatedClient } from "@/lib/supabase/authenticated";
+import { getResponseText } from "@/lib/openai-response";
 
 export async function POST(request: Request) {
   const supabase = createAuthenticatedClient(request);
@@ -33,5 +34,5 @@ export async function POST(request: Request) {
   });
   const result = await response.json();
   if (!response.ok) return NextResponse.json({ error: result?.error?.message || "Không thể tạo phản hồi AI." }, { status: 502 });
-  return NextResponse.json({ feedback: result.output_text || "" });
+  return NextResponse.json({ feedback: getResponseText(result) });
 }
