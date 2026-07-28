@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://kayeng-english.nguyenkhaa223.chatgpt.site"),
   title: "Kayeng English — Luyện nói mỗi ngày",
   description: "Lộ trình tiếng Anh giao tiếp cá nhân hóa với phản hồi phát âm tức thì.",
   icons: { icon: "/favicon.svg" },
@@ -19,7 +20,15 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="vi">
+    <html lang="vi" suppressHydrationWarning>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html:
+              "try{var t=localStorage.getItem('kayeng-theme')||((matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.dataset.theme=t}catch(e){}",
+          }}
+        />
+      </head>
       <body>{children}</body>
     </html>
   );

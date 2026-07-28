@@ -1,6 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import type { User } from "@supabase/supabase-js";
+import { startWavRecording, type WavRecorder } from "@/lib/audio/wav-recorder";
+import { createClient } from "@/lib/supabase/client";
 
 const lessons = [
   { title: "Chào hỏi tự nhiên", detail: "Từ vựng • 4 phút", status: "done", icon: "Aa" },
@@ -17,10 +20,25 @@ const navItems = [
 ];
 
 export default function Home() {
+  const supabaseRef = useRef(createClient());
+  const recorderRef = useRef<WavRecorder | null>(null);
   const [activeNav, setActiveNav] = useState("Hôm nay");
   const [recording, setRecording] = useState(false);
   const [seconds, setSeconds] = useState(0);
   const [showResult, setShowResult] = useState(false);
+  const [result, setResult] = useState<{ score?: number; message: string; transcript?: string }>({
+    message: "",
+  });
+  const [user, setUser] = useState<User | null>(null);
+  const [profile, setProfile] = useState<Record<string, unknown> | null>(null);
+  const [authOpen, setAuthOpen] = useState(false);
+  const [authMode, setAuthMode] = useState<"login" | "signup">("login");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [authError, setAuthError] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [theme, setTheme] = useState<"light" | "dark">("light");
+  const [dbLessons, setDbLessons] = useState<Array<{ id: string; title: string; estimated_minutes: number }>>([]);
 
   useEffect(() => {
     if (!recording) return;
@@ -28,16 +46,189 @@ export default function Home() {
     return () => window.clearInterval(timer);
   }, [recording]);
 
-  function toggleRecording() {
-    if (recording) {
-      setRecording(false);
-      setShowResult(true);
+  useEffect(() => {
+    const supabase = supabaseRef.current;
+    supabase.auth.getUser().then(({ data }) => setUser(data.user));
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+    });
+    return () => listener.subscription.unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    const stored = localStorage.getItem("kayeng-theme");
+    const preferred =
+      stored === "dark" || stored === "light"
+        ? stored
+        : window.matchMedia("(prefers-color-scheme: dark)").matches
+          ? "dark"
+          : "light";
+    setTheme(preferred);
+    document.documentElement.dataset.theme = preferred;
+  }, []);
+
+  function toggleTheme() {
+    const next = theme === "light" ? "dark" : "light";
+    setTheme(next);
+    document.documentElement.dataset.theme = next;
+    localStorage.setItem("kayeng-theme", next);
+  }
+
+  useEffect(() => {
+    if (!user) {
+      setProfile(null);
       return;
     }
-    setSeconds(0);
-    setShowResult(false);
-    setRecording(true);
+    const supabase = supabaseRef.current;
+    supabase.from("profiles").select("*").eq("id", user.id).single().then(({ data }) => setProfile(data));
+    supabase
+      .from("lessons")
+      .select("id,title,estimated_minutes")
+      .eq("status", "published")
+      .order("sort_order")
+      .then(({ data }) => setDbLessons(data || []));
+  }, [user]);
+
+  async function submitAuth(event: React.FormEvent) {
+    event.preventDefault();
+    setBusy(true);
+    setAuthError("");
+    const supabase = supabaseRef.current;
+    const action =
+      authMode === "login"
+        ? supabase.auth.signInWithPassword({ email, password })
+        : supabase.auth.signUp({ email, password, options: { data: { display_name: email.split("@")[0] } } });
+    const { data, error } = await action;
+    setBusy(false);
+    if (error) {
+      setAuthError(error.message);
+      return;
+    }
+    if (authMode === "signup" && !data.session) {
+      setAuthError("Hãy kiểm tra email để xác nhận tài khoản.");
+      return;
+    }
+    setAuthOpen(false);
   }
+
+  async function saveOnboarding(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!user) return;
+    const form = new FormData(event.currentTarget);
+    setBusy(true);
+    const { data } = await supabaseRef.current
+      .from("profiles")
+      .update({
+        display_name: form.get("displayName"),
+        learning_goal: form.get("learningGoal"),
+        occupation: form.get("occupation"),
+        daily_goal_minutes: Number(form.get("dailyMinutes")),
+        cefr_level: form.get("level"),
+        onboarding_completed: true,
+      })
+      .eq("id", user.id)
+      .select()
+      .single();
+    setProfile(data);
+    setBusy(false);
+  }
+
+  async function completeLesson(lessonId?: string, minutes = 15) {
+    if (!user) {
+      setAuthOpen(true);
+      return;
+    }
+    if (!lessonId) return;
+    setBusy(true);
+    const { error } = await supabaseRef.current.rpc("complete_lesson", {
+      p_lesson_id: lessonId,
+      p_minutes: minutes,
+    });
+    setResult({
+      message: error ? error.message : "Tiến độ, thời gian học và streak đã được cập nhật.",
+    });
+    setShowResult(true);
+    setBusy(false);
+  }
+
+  async function toggleRecording() {
+    if (!user) {
+      setAuthOpen(true);
+      return;
+    }
+    if (recording) {
+      setRecording(false);
+      const recordingData = await recorderRef.current?.stop();
+      recorderRef.current = null;
+      if (!recordingData || recordingData.durationMs < 1200) {
+        setResult({ message: "Bản ghi quá ngắn. Hãy nói ít nhất 2 giây." });
+        setShowResult(true);
+        return;
+      }
+      setBusy(true);
+      setResult({ message: "" });
+      setShowResult(true);
+      try {
+        const { data: sessionData } = await supabaseRef.current.auth.getSession();
+        const token = sessionData.session?.access_token;
+        const signedResponse = await fetch("/api/recordings/signed-upload", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+          body: JSON.stringify({
+            durationMs: recordingData.durationMs,
+            referenceText: "My name is Minh. I work as a designer. In my free time, I enjoy reading.",
+          }),
+        });
+        const signed = await signedResponse.json();
+        if (!signedResponse.ok) throw new Error(signed.error);
+        const { error: uploadError } = await supabaseRef.current.storage
+          .from("speaking-recordings")
+          .uploadToSignedUrl(signed.path, signed.token, recordingData.blob, {
+            contentType: "audio/wav",
+          });
+        if (uploadError) throw uploadError;
+        await supabaseRef.current
+          .from("audio_recordings")
+          .update({ status: "uploaded" })
+          .eq("id", signed.recordingId);
+        const assessmentResponse = await fetch("/api/assessments/pronunciation", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ recordingId: signed.recordingId }),
+        });
+        const assessment = await assessmentResponse.json();
+        if (!assessmentResponse.ok) {
+          if (assessment.code === "AZURE_NOT_CONFIGURED") {
+            setResult({ message: "Đã lưu bản ghi an toàn. Thêm khóa Azure Speech để nhận điểm phát âm." });
+          } else {
+            throw new Error(assessment.error);
+          }
+        } else {
+          setResult({
+            score: Math.round(assessment.scores?.PronScore || 0),
+            transcript: assessment.transcript,
+            message: "Đã phân tích phát âm và lưu kết quả vào hồ sơ.",
+          });
+        }
+      } catch (error) {
+        setResult({ message: error instanceof Error ? error.message : "Không thể xử lý bản ghi âm." });
+      } finally {
+        setBusy(false);
+      }
+      return;
+    }
+    try {
+      recorderRef.current = await startWavRecording();
+      setSeconds(0);
+      setShowResult(false);
+      setRecording(true);
+    } catch {
+      setResult({ message: "Không thể truy cập microphone. Hãy kiểm tra quyền trình duyệt." });
+      setShowResult(true);
+    }
+  }
+
+  const displayName = (profile?.display_name as string) || user?.email?.split("@")[0] || "Minh";
 
   return (
     <main>
@@ -58,9 +249,20 @@ export default function Home() {
         <header className="topbar">
           <div>
             <p className="date-label">THỨ BA, 28 THÁNG 7</p>
-            <h2>Chào buổi sáng, Minh <span>👋</span></h2>
+            <h2>Chào buổi sáng, {displayName} <span>👋</span></h2>
           </div>
-          <button className="avatar" aria-label="Mở hồ sơ">M</button>
+          <div className="top-actions">
+            <button className="theme-toggle" aria-label={`Chuyển sang giao diện ${theme === "light" ? "tối" : "sáng"}`} onClick={toggleTheme}>
+              {theme === "light" ? "◐" : "☀"}
+            </button>
+            <button
+              className="avatar"
+              aria-label={user ? "Đăng xuất" : "Đăng nhập"}
+              onClick={() => (user ? supabaseRef.current.auth.signOut() : setAuthOpen(true))}
+            >
+              {displayName.slice(0, 1).toUpperCase()}
+            </button>
+          </div>
         </header>
 
         <div className="content">
@@ -88,8 +290,23 @@ export default function Home() {
               <button onClick={() => setActiveNav("Học")}>Xem tất cả</button>
             </div>
             <div className="lesson-list">
-              {lessons.map((lesson, index) => (
-                <button className={`lesson ${lesson.status}`} key={lesson.title}>
+              {(dbLessons.length
+                ? dbLessons.slice(0, 3).map((lesson, index) => ({
+                    id: lesson.id,
+                    title: lesson.title,
+                    detail: `Bài học • ${lesson.estimated_minutes} phút`,
+                    minutes: lesson.estimated_minutes,
+                    status: index === 0 ? "active" : "next",
+                    icon: index === 0 ? "◉" : "✦",
+                  }))
+                : lessons.map((lesson) => ({ ...lesson, id: undefined, minutes: 15 }))
+              ).map((lesson, index) => (
+                <button
+                  className={`lesson ${lesson.status}`}
+                  key={lesson.title}
+                  onClick={() => completeLesson(lesson.id, lesson.minutes)}
+                  disabled={busy}
+                >
                   <span className="lesson-index">{lesson.status === "done" ? "✓" : lesson.icon}</span>
                   <span className="lesson-copy">
                     <strong>{lesson.title}</strong>
@@ -114,6 +331,7 @@ export default function Home() {
               <button
                 className={recording ? "mic recording" : "mic"}
                 onClick={toggleRecording}
+                disabled={busy}
                 aria-label={recording ? "Dừng ghi âm" : "Bắt đầu ghi âm"}
               >
                 {recording ? "■" : "●"}
@@ -124,12 +342,21 @@ export default function Home() {
 
           {showResult && (
             <section className="result-card" aria-live="polite">
-              <div className="score-ring"><strong>82</strong><span>/100</span></div>
-              <div>
-                <p className="section-kicker">PHẢN HỒI TỨC THÌ</p>
-                <h3>Khởi đầu rất tốt!</h3>
-                <p><mark>Phát âm rõ</mark> và hoàn thành đúng yêu cầu. Hãy luyện lại âm <b>/θ/</b> trong từ “think”.</p>
-              </div>
+              <div className="score-ring"><strong>{result.score ?? "✓"}</strong><span>{result.score !== undefined ? "/100" : "ĐÃ LƯU"}</span></div>
+              {busy ? (
+                <div className="assessment-skeleton" aria-busy="true" aria-label="Đang phân tích bản ghi">
+                  <div className="skeleton skeleton-line short" />
+                  <div className="skeleton skeleton-line" />
+                  <div className="skeleton skeleton-line" />
+                </div>
+              ) : (
+                <div>
+                  <p className="section-kicker">PHẢN HỒI TỨC THÌ</p>
+                  <h3>Kết quả luyện nói</h3>
+                  <p>{result.message}</p>
+                  {result.transcript && <p><mark>Transcript</mark> {result.transcript}</p>}
+                </div>
+              )}
               <button onClick={() => setShowResult(false)}>Luyện lại</button>
             </section>
           )}
@@ -153,6 +380,45 @@ export default function Home() {
             </button>
           ))}
         </nav>
+
+        {authOpen && (
+          <div className="modal-backdrop" role="dialog" aria-modal="true" aria-label="Đăng nhập Kayeng">
+            <form className="auth-card" onSubmit={submitAuth}>
+              <button type="button" className="modal-close" onClick={() => setAuthOpen(false)}>×</button>
+              <p className="section-kicker">KAYENG ENGLISH</p>
+              <h3>{authMode === "login" ? "Chào mừng bạn trở lại" : "Tạo tài khoản học"}</h3>
+              <p>Lưu tiến độ, streak và kết quả luyện nói trên mọi thiết bị.</p>
+              <label>Email<input type="email" required value={email} onChange={(event) => setEmail(event.target.value)} /></label>
+              <label>Mật khẩu<input type="password" minLength={6} required value={password} onChange={(event) => setPassword(event.target.value)} /></label>
+              {authError && <div className="form-message">{authError}</div>}
+              <button className="primary-action" disabled={busy} aria-label={authMode === "login" ? "Đăng nhập" : "Đăng ký"}>
+                {busy ? <span className="spinner" aria-hidden="true" /> : authMode === "login" ? "Đăng nhập" : "Đăng ký"}
+              </button>
+              <button type="button" className="text-action" onClick={() => setAuthMode(authMode === "login" ? "signup" : "login")}>
+                {authMode === "login" ? "Chưa có tài khoản? Đăng ký" : "Đã có tài khoản? Đăng nhập"}
+              </button>
+            </form>
+          </div>
+        )}
+
+        {user && profile && profile.onboarding_completed === false && (
+          <div className="modal-backdrop" role="dialog" aria-modal="true" aria-label="Thiết lập lộ trình">
+            <form className="auth-card onboarding-card" onSubmit={saveOnboarding}>
+              <p className="section-kicker">LỘ TRÌNH CÁ NHÂN</p>
+              <h3>Bắt đầu đúng với mục tiêu của bạn</h3>
+              <div className="form-grid">
+                <label>Tên hiển thị<input name="displayName" defaultValue={displayName} required /></label>
+                <label>Nghề nghiệp<input name="occupation" placeholder="Sinh viên, thiết kế..." /></label>
+                <label>Trình độ<select name="level" defaultValue="A1"><option>A0</option><option>A1</option><option>A2</option><option>B1</option><option>B2</option></select></label>
+                <label>Phút học mỗi ngày<select name="dailyMinutes" defaultValue="15"><option value="10">10 phút</option><option value="15">15 phút</option><option value="20">20 phút</option><option value="30">30 phút</option></select></label>
+              </div>
+              <label>Mục tiêu<textarea name="learningGoal" placeholder="Tự tin giao tiếp trong công việc..." required /></label>
+              <button className="primary-action" disabled={busy} aria-label="Tạo lộ trình">
+                {busy ? <span className="spinner" aria-hidden="true" /> : "Tạo lộ trình"}
+              </button>
+            </form>
+          </div>
+        )}
       </section>
     </main>
   );
