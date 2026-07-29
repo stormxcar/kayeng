@@ -4,6 +4,8 @@ import { AppTour } from "@/components/AppTour";
 import { GlobalTooltips } from "@/components/GlobalTooltips";
 import { NavigationProgress } from "@/components/NavigationProgress";
 import { TaskOverlayProvider } from "@/components/TaskOverlay";
+import { AuthProvider } from "@/lib/hooks/use-auth";
+import { RuntimeQuality } from "@/components/RuntimeQuality";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://kayeng-english.nguyenkhaa223.chatgpt.site"),
@@ -33,7 +35,18 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
           }}
         />
       </head>
-      <body><TaskOverlayProvider>{children}<NavigationProgress /><GlobalTooltips /><AppTour /></TaskOverlayProvider></body>
+      <body>
+        <a className="skip-link" href="#main-content">Bỏ qua điều hướng</a>
+        <AuthProvider>
+          <TaskOverlayProvider>
+            {children}
+            <NavigationProgress />
+            <GlobalTooltips />
+            <AppTour />
+            <RuntimeQuality />
+          </TaskOverlayProvider>
+        </AuthProvider>
+      </body>
     </html>
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { PageShell } from "@/components/PageShell";
 import { useAuth } from "@/lib/hooks/use-auth";
 import { CustomSelect, levelOptions } from "@/components/CustomSelect";
@@ -27,7 +27,7 @@ export default function AdminPage() {
   const [cmsMessage, setCmsMessage] = useState("");
   const debounced = useDebounce(query);
 
-  async function reload() {
+  const reload = useCallback(async () => {
     const [courseResult, userResult, dictionaryResult] = await Promise.all([
       supabase.from("courses").select("id,title,slug,cefr_level,status,created_at").order("created_at", { ascending: false }),
       supabase.from("profiles").select("id,display_name,role,cefr_level,created_at").order("created_at", { ascending: false }).limit(100),
@@ -36,14 +36,18 @@ export default function AdminPage() {
     setCourses((courseResult.data || []) as AdminCourse[]);
     setUsers((userResult.data || []) as AdminUser[]);
     setDictionary((dictionaryResult.data || []) as DictionaryItem[]);
-  }
-  useEffect(() => { if (profile?.role === "admin") reload(); }, [profile]);
+  }, [supabase]);
   useEffect(() => {
-    if (!selectedCourse) { setUnits([]); return; }
+    if (profile?.role !== "admin") return;
+    const timer = window.setTimeout(() => void reload(), 0);
+    return () => window.clearTimeout(timer);
+  }, [profile?.role, reload]);
+  useEffect(() => {
+    if (!selectedCourse) return;
     supabase.from("units").select("id,title,course_id").eq("course_id", selectedCourse).order("sort_order").then(({ data }) => setUnits((data || []) as AdminUnit[]));
   }, [selectedCourse, supabase]);
   useEffect(() => {
-    if (!selectedUnit) { setLessons([]); return; }
+    if (!selectedUnit) return;
     supabase.from("lessons").select("id,title,unit_id").eq("unit_id", selectedUnit).order("sort_order").then(({ data }) => setLessons((data || []) as AdminLesson[]));
   }, [selectedUnit, supabase]);
 

@@ -16,6 +16,7 @@ export default function ReviewPage() {
   const [index, setIndex] = useState(0);
   const [revealed, setRevealed] = useState(false);
   const [reviewed, setReviewed] = useState(0);
+  const [renderedAt] = useState(() => Date.now());
   const current = cards[index];
   const { runTask } = useTaskOverlay();
 
@@ -53,7 +54,7 @@ export default function ReviewPage() {
   const interval = (rating: Grade) => {
     const due = previews?.[rating].card.due;
     if (!due) return "";
-    const minutes = Math.max(1, Math.round((due.getTime() - Date.now()) / 60000));
+    const minutes = Math.max(1, Math.round((due.getTime() - renderedAt) / 60000));
     return minutes < 60 ? `${minutes} phút` : minutes < 1440 ? `${Math.round(minutes / 60)} giờ` : `${Math.round(minutes / 1440)} ngày`;
   };
 

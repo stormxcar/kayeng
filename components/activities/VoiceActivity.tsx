@@ -39,6 +39,14 @@ export default function VoiceActivity({ activity, onComplete }: { activity: Acti
     }
     if (preview) URL.revokeObjectURL(preview);
     setPreview(URL.createObjectURL(captured.blob));
+    if (captured.rmsDb < -48) {
+      setAssessment({ message: "Âm lượng quá nhỏ hoặc chưa thu được giọng nói. Hãy đưa micro gần hơn và thử lại." });
+      return;
+    }
+    if (captured.clippingRatio > .08) {
+      setAssessment({ message: "Âm thanh bị vỡ do micro quá gần hoặc âm lượng quá lớn. Hãy lùi micro và ghi lại." });
+      return;
+    }
     setBusy(true);
     try {
       const supabase = createClient();

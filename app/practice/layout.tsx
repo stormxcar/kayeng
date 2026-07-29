@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Luyện nói tiếng Anh | Kayeng English",
-  description: "Ghi âm, nghe lại và nhận phản hồi phát âm trong các tình huống giao tiếp.",
+  title: "Trung tâm luyện tập tiếng Anh | Kayeng English",
+  description: "Luyện nghe, nói, đọc, viết, phát âm và hội thoại theo trình độ A0–C2.",
 };
 
 export default function PracticeLayout({ children }: { children: React.ReactNode }) {

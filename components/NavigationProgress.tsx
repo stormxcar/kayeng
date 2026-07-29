@@ -8,6 +8,7 @@ export function NavigationProgress() {
   const [active, setActive] = useState(false);
   const startedAt = useRef(0);
   const targetPath = useRef<string | null>(null);
+  const delayTimer = useRef<number | null>(null);
 
   useEffect(() => {
     const start = (event: MouseEvent) => {
@@ -16,18 +17,37 @@ export function NavigationProgress() {
       if (!anchor || anchor.target === "_blank" || anchor.hasAttribute("download")) return;
       const target = new URL(anchor.href, window.location.href);
       if (target.origin !== window.location.origin || `${target.pathname}${target.search}` === `${location.pathname}${location.search}`) return;
-      startedAt.current = Date.now();
       targetPath.current = target.pathname;
-      setActive(true);
+      if (delayTimer.current) window.clearTimeout(delayTimer.current);
+      delayTimer.current = window.setTimeout(() => {
+        startedAt.current = Date.now();
+        setActive(true);
+      }, 150);
     };
-    const pop = () => { startedAt.current = Date.now(); targetPath.current = null; setActive(true); };
+    const pop = () => {
+      targetPath.current = null;
+      if (delayTimer.current) window.clearTimeout(delayTimer.current);
+      delayTimer.current = window.setTimeout(() => {
+        startedAt.current = Date.now();
+        setActive(true);
+      }, 150);
+    };
     document.addEventListener("click", start, true);
     window.addEventListener("popstate", pop);
-    return () => { document.removeEventListener("click", start, true); window.removeEventListener("popstate", pop); };
+    return () => {
+      document.removeEventListener("click", start, true);
+      window.removeEventListener("popstate", pop);
+      if (delayTimer.current) window.clearTimeout(delayTimer.current);
+    };
   }, []);
 
   useEffect(() => {
-    if (!active || (targetPath.current && targetPath.current !== pathname)) return;
+    if (targetPath.current && targetPath.current !== pathname) return;
+    if (delayTimer.current) {
+      window.clearTimeout(delayTimer.current);
+      delayTimer.current = null;
+    }
+    if (!active) return;
     const remaining = Math.max(0, 380 - (Date.now() - startedAt.current));
     const timer = window.setTimeout(() => setActive(false), remaining);
     return () => window.clearTimeout(timer);

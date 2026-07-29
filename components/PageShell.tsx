@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
+import Image from "next/image";
 import { AppNav } from "./AppNav";
 import { useAuth } from "@/lib/hooks/use-auth";
 import { Moon, PanelLeftClose, PanelLeftOpen, Sun } from "lucide-react";
@@ -18,10 +19,12 @@ export function PageShell({
   actions?: ReactNode;
 }) {
   const { profile } = useAuth();
-  const [theme, setTheme] = useState<"light" | "dark">("light");
-  const [collapsed, setCollapsed] = useState(false);
-  useEffect(() => setTheme(document.documentElement.dataset.theme === "dark" ? "dark" : "light"), []);
-  useEffect(() => setCollapsed(localStorage.getItem("kayeng-sidebar") === "collapsed"), []);
+  const [theme, setTheme] = useState<"light" | "dark">(() =>
+    typeof document !== "undefined" && document.documentElement.dataset.theme === "dark" ? "dark" : "light"
+  );
+  const [collapsed, setCollapsed] = useState(() =>
+    typeof window !== "undefined" && localStorage.getItem("kayeng-sidebar") === "collapsed"
+  );
   function toggleTheme() {
     const next = theme === "light" ? "dark" : "light";
     setTheme(next);
@@ -40,14 +43,14 @@ export function PageShell({
         <div className="sidebar-brand-row"><Link href="/" className="brand-link"><span className="brand-mark">K</span><b>Kayeng</b></Link><button onClick={toggleSidebar} aria-label={collapsed ? "Mở rộng thanh bên" : "Thu gọn thanh bên"} data-tooltip={collapsed ? "Mở rộng" : "Thu gọn"}>{collapsed ? <PanelLeftOpen size={19}/> : <PanelLeftClose size={19}/>}</button></div>
         <AppNav />
       </aside>
-      <section className="web-page">
+      <section className="web-page" id="main-content" tabIndex={-1}>
         <header className="page-header">
           <div><p className="section-kicker">{eyebrow}</p><h1>{title}</h1></div>
           <div className="page-actions">
             {actions}
             <button className="theme-toggle" data-tooltip="Đổi giao diện" onClick={toggleTheme} aria-label={`Chuyển sang giao diện ${theme === "light" ? "tối" : "sáng"}`}>{theme === "light" ? <Moon size={20} /> : <Sun size={20} />}</button>
             <Link href="/profile" className="avatar" data-tooltip="Hồ sơ cá nhân" data-tour="profile">
-              {profile?.avatar_url ? <img src={profile.avatar_url} alt="" /> : (profile?.display_name || "K").slice(0, 1).toUpperCase()}
+              {profile?.avatar_url ? <Image src={profile.avatar_url} alt="" width={46} height={46} sizes="46px" /> : (profile?.display_name || "K").slice(0, 1).toUpperCase()}
             </Link>
           </div>
         </header>

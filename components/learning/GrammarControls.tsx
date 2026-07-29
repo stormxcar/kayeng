@@ -1,0 +1,6 @@
+"use client";
+import { useDeferredValue, useEffect, useState } from "react";
+import { Search } from "lucide-react";
+export function GrammarControls(){const [query,setQuery]=useState("");const deferred=useDeferredValue(query);const [level,setLevel]=useState("Tất cả");useEffect(()=>{const needle=deferred.toLocaleLowerCase();document.querySelectorAll<HTMLElement>("[data-grammar-card]").forEach(card=>card.hidden=!((level==="Tất cả"||card.dataset.level===level)&&(!needle||(card.dataset.search||"").includes(needle))))},[deferred,level]);return <div className="knowledge-toolbar"><label><Search size={18}/><input placeholder="Tìm chủ điểm, cách dùng…" value={query} onChange={e=>setQuery(e.target.value)}/></label><div>{["Tất cả","A1","A2","B1","B2","C1"].map(item=><button className={level===item?"active":""} onClick={()=>setLevel(item)} key={item}>{item}</button>)}</div></div>}
+export function GrammarDialogButton({id}:{id:string}){return <button onClick={()=>document.getElementById(id)?.showPopover()}>Mở bài giải thích →</button>}
+export function GrammarDialogClose({id}:{id:string}){return <button className="grammar-close" aria-label="Đóng" onClick={()=>document.getElementById(id)?.hidePopover()}>×</button>}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { Check, ChevronDown } from "lucide-react";
 
 export type SelectOption = { value: string; label: string; description?: string };
@@ -28,6 +28,7 @@ export function CustomSelect({
   const [internalValue, setInternalValue] = useState(defaultValue || "");
   const value = controlledValue ?? internalValue;
   const root = useRef<HTMLDivElement>(null);
+  const menuId = useId();
   const selected = options.find((option) => option.value === value);
 
   useEffect(() => {
@@ -38,6 +39,35 @@ export function CustomSelect({
     return () => document.removeEventListener("pointerdown", close);
   }, []);
 
+  function focusOption(index: number) {
+    const buttons = root.current?.querySelectorAll<HTMLButtonElement>("[role='option']");
+    buttons?.[Math.max(0, Math.min(index, buttons.length - 1))]?.focus();
+  }
+
+  function handleTriggerKeyDown(event: React.KeyboardEvent<HTMLButtonElement>) {
+    if (!["ArrowDown", "ArrowUp", "Home", "End"].includes(event.key)) return;
+    event.preventDefault();
+    setOpen(true);
+    window.requestAnimationFrame(() => {
+      const selectedIndex = Math.max(0, options.findIndex((option) => option.value === value));
+      focusOption(event.key === "End" ? options.length - 1 : event.key === "Home" ? 0 : selectedIndex);
+    });
+  }
+
+  function handleOptionKeyDown(event: React.KeyboardEvent<HTMLButtonElement>, index: number) {
+    if (event.key === "Escape") {
+      event.preventDefault();
+      setOpen(false);
+      root.current?.querySelector<HTMLButtonElement>(".custom-select-trigger")?.focus();
+    } else if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+      event.preventDefault();
+      focusOption(index + (event.key === "ArrowDown" ? 1 : -1));
+    } else if (event.key === "Home" || event.key === "End") {
+      event.preventDefault();
+      focusOption(event.key === "Home" ? 0 : options.length - 1);
+    }
+  }
+
   return (
     <div className="custom-select" ref={root}>
       <input type="hidden" name={name} value={value} />
@@ -46,21 +76,24 @@ export function CustomSelect({
         className="custom-select-trigger"
         aria-haspopup="listbox"
         aria-expanded={open}
-        aria-required={required}
+        aria-controls={menuId}
         disabled={disabled}
         onClick={() => setOpen((current) => !current)}
+        onKeyDown={handleTriggerKeyDown}
       >
         <span>{selected?.label || placeholder}</span><ChevronDown className="select-chevron" size={18} />
       </button>
+      {required && <input className="custom-select-validity" tabIndex={-1} aria-hidden="true" required value={value} onChange={() => {}} />}
       {open && (
-        <div className="custom-select-menu" role="listbox">
-          {options.map((option) => (
+        <div className="custom-select-menu" role="listbox" id={menuId} aria-label={placeholder}>
+          {options.map((option, index) => (
             <button
               type="button"
               role="option"
               aria-selected={value === option.value}
               className={value === option.value ? "selected" : ""}
               key={option.value}
+              onKeyDown={(event) => handleOptionKeyDown(event, index)}
               onClick={() => { setInternalValue(option.value); onValueChange?.(option.value); setOpen(false); }}
             >
               <span>{option.label}</span>

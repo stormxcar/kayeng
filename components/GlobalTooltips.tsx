@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 
-const selector = "button, a, [role='button'], input[type='search'], input[type='file']";
+const selector = "[data-tooltip], button[aria-label], a[aria-label], [role='button'][aria-label]";
 
 export function GlobalTooltips() {
   useEffect(() => {
@@ -10,8 +10,7 @@ export function GlobalTooltips() {
       root.querySelectorAll<HTMLElement>(selector).forEach((element) => {
         if (element.dataset.tooltip || element.closest(".driver-popover") || element.hasAttribute("data-no-tooltip")) return;
         const label = element.getAttribute("aria-label") || element.getAttribute("title");
-        const visibleText = element.textContent?.replace(/\s+/g, " ").trim();
-        const tooltip = label || (visibleText && visibleText.length <= 38 ? visibleText : "");
+        const tooltip = label;
         if (tooltip) {
           element.dataset.tooltip = tooltip;
           element.removeAttribute("title");

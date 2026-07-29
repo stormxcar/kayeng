@@ -2,13 +2,14 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import {
   BookOpen, BrainCircuit, ChevronRight, CircleUserRound, Clock3, Compass,
-  GraduationCap, History, Home, Languages, Library,
-  Menu, MessageCircle, Mic2, Search, Sparkles, SpellCheck2, AudioLines,
+  GraduationCap, History, Home, Library,
+  Menu, Mic2, Search, Sparkles, SpellCheck2, AudioLines,
   Target, Trophy, X,
 } from "lucide-react";
+import { useDialogFocusTrap } from "@/lib/hooks/use-dialog-focus-trap";
 
 const primary = [
   { href: "/", icon: Home, label: "Hôm nay" },
@@ -21,17 +22,14 @@ const groups = [
   {
     label: "Học tập", icon: BookOpen,
     links: [
-      { href: "/learn", label: "Lộ trình A0–C2", icon: GraduationCap },
       { href: "/topics", label: "Học theo chủ đề", icon: Compass },
       { href: "/grammar", label: "Ngữ pháp", icon: SpellCheck2 },
       { href: "/pronunciation", label: "Bảng IPA & phát âm", icon: AudioLines },
-      { href: "/practice", label: "Phát âm & hội thoại", icon: MessageCircle },
     ],
   },
   {
     label: "Khám phá", icon: Sparkles,
     links: [
-      { href: "/dictionary", label: "Từ điển Anh–Việt", icon: Languages },
       { href: "/tests", label: "Kiểm tra", icon: BrainCircuit },
       { href: "/library", label: "Thư viện", icon: Library },
       { href: "/history", label: "Lịch sử học", icon: History },
@@ -41,6 +39,7 @@ const groups = [
     label: "Cá nhân", icon: Target,
     links: [
       { href: "/review", label: "Ôn tập thông minh", icon: Clock3 },
+      { href: "/mistakes", label: "Ôn lại lỗi sai", icon: BrainCircuit },
       { href: "/achievements", label: "Thành tích", icon: Trophy },
       { href: "/profile", label: "Hồ sơ & mục tiêu", icon: CircleUserRound },
     ],
@@ -50,6 +49,9 @@ const groups = [
 export function AppNav() {
   const pathname = usePathname();
   const [explore, setExplore] = useState(false);
+  const sheet = useRef<HTMLElement>(null);
+  const closeExplore = useCallback(() => setExplore(false), []);
+  useDialogFocusTrap(explore, sheet, closeExplore);
   const selected = (href: string) => href === "/" ? pathname === "/" : pathname.startsWith(href);
 
   return (
@@ -66,8 +68,8 @@ export function AppNav() {
       </nav>
 
       <div className={`explore-sheet-backdrop ${explore ? "open" : ""}`} onClick={() => setExplore(false)} />
-      <aside className={`explore-sheet ${explore ? "open" : ""}`} aria-hidden={!explore}>
-        <header><div><small>KHÔNG GIAN KAYENG</small><h2>Khám phá</h2></div><button onClick={() => setExplore(false)} aria-label="Đóng menu"><X size={22} /></button></header>
+      <aside ref={sheet} className={`explore-sheet ${explore ? "open" : ""}`} aria-hidden={!explore} role="dialog" aria-modal="true" aria-labelledby="explore-title">
+        <header><div><small>KHÔNG GIAN KAYENG</small><h2 id="explore-title">Khám phá</h2></div><button onClick={closeExplore} aria-label="Đóng menu"><X size={22} /></button></header>
         <div className="explore-groups">
           {groups.map((group) => (
             <section key={group.label}>

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useEffect, useState } from "react";
 import { PageShell } from "@/components/PageShell";
 import { accentOptions, CustomSelect, dailyGoalOptions, levelOptions, occupationOptions } from "@/components/CustomSelect";
@@ -26,8 +27,6 @@ export default function ProfilePage() {
       supabase.from("streaks").select("current_streak").eq("user_id", user.id).single(),
     ]).then(([lessons, recordings, streak]) => setStats({ lessons: lessons.count || 0, recordings: recordings.count || 0, streak: streak.data?.current_streak || 0 }));
   }, [supabase, user]);
-
-  useEffect(() => setAvatarUrl(profile?.avatar_url || null), [profile?.avatar_url]);
 
   async function uploadAvatar(file?: File) {
     if (!file || !user) return;
@@ -107,7 +106,7 @@ export default function ProfilePage() {
           <aside className="profile-summary">
             <div className="avatar-editor">
               <div className="profile-avatar">
-                {avatarPreview || avatarUrl ? <img src={avatarPreview || avatarUrl || ""} alt={`Ảnh đại diện của ${profile.display_name || "bạn"}`} /> : (profile.display_name || "K").slice(0, 1).toUpperCase()}
+                {avatarPreview || avatarUrl || profile.avatar_url ? <Image src={avatarPreview || avatarUrl || profile.avatar_url || ""} alt={`Ảnh đại diện của ${profile.display_name || "bạn"}`} width={112} height={112} sizes="112px" unoptimized={Boolean(avatarPreview)} /> : (profile.display_name || "K").slice(0, 1).toUpperCase()}
                 {uploading && <span className="avatar-upload-progress" aria-label="Đang tải ảnh"><i /></span>}
               </div>
               <label className="avatar-upload-button" data-tooltip="JPG, PNG hoặc WebP · tối đa 5 MB">

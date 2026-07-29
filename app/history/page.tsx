@@ -34,6 +34,9 @@ export default function HistoryPage() {
   const [conversationTurns, setConversationTurns] = useState<Array<{ id: string; speaker: string; content: string }>>([]);
   const [expandedConversation, setExpandedConversation] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState({ lessons: false, recordings: false, conversations: false });
+  const pageSize = 20;
 
   useEffect(() => {
     if (!user) return;
@@ -41,25 +44,70 @@ export default function HistoryPage() {
       const [progressResult, recordingResult, conversationResult] = await Promise.all([
         supabase.from("lesson_progress")
           .select("lesson_id,status,percent_complete,score,completed_at,updated_at,lessons(title,units(title,courses(title)))")
-          .eq("user_id", user!.id).order("updated_at", { ascending: false }).limit(50),
+          .eq("user_id", user!.id).order("updated_at", { ascending: false }).limit(pageSize + 1),
         supabase.from("audio_recordings")
           .select("id,created_at,reference_text,status,storage_path,speaking_assessments(overall_score,transcript)")
-          .eq("user_id", user!.id).order("created_at", { ascending: false }).limit(20),
+          .eq("user_id", user!.id).order("created_at", { ascending: false }).limit(pageSize + 1),
         supabase.from("conversation_sessions")
           .select("id,scenario,persona,turn_count,status,started_at")
-          .eq("user_id", user!.id).order("started_at", { ascending: false }).limit(20),
+          .eq("user_id", user!.id).order("started_at", { ascending: false }).limit(pageSize + 1),
       ]);
-      setProgress((progressResult.data || []) as unknown as ProgressItem[]);
-      const withPlayback = await Promise.all(((recordingResult.data || []) as unknown as RecordingItem[]).map(async (recording) => {
-        const { data } = await supabase.storage.from("speaking-recordings").createSignedUrl(recording.storage_path, 900);
-        return { ...recording, playback: data?.signedUrl };
-      }));
-      setRecordings(withPlayback);
-      setConversations((conversationResult.data || []) as ConversationItem[]);
+      const nextProgress = (progressResult.data || []) as unknown as ProgressItem[];
+      const nextRecordings = (recordingResult.data || []) as unknown as RecordingItem[];
+      const nextConversations = (conversationResult.data || []) as ConversationItem[];
+      setProgress(nextProgress.slice(0, pageSize));
+      setRecordings(nextRecordings.slice(0, pageSize));
+      setConversations(nextConversations.slice(0, pageSize));
+      setHasMore({
+        lessons: nextProgress.length > pageSize,
+        recordings: nextRecordings.length > pageSize,
+        conversations: nextConversations.length > pageSize,
+      });
       setLoading(false);
     }
-    loadHistory();
+    void loadHistory();
   }, [supabase, user]);
+
+  async function loadMore() {
+    if (!user || loadingMore || !hasMore[tab]) return;
+    setLoadingMore(true);
+    if (tab === "lessons" && progress.length) {
+      const { data } = await supabase.from("lesson_progress")
+        .select("lesson_id,status,percent_complete,score,completed_at,updated_at,lessons(title,units(title,courses(title)))")
+        .eq("user_id", user.id).lt("updated_at", progress.at(-1)!.updated_at)
+        .order("updated_at", { ascending: false }).limit(pageSize + 1);
+      const next = (data || []) as unknown as ProgressItem[];
+      setProgress((current) => [...current, ...next.slice(0, pageSize)]);
+      setHasMore((current) => ({ ...current, lessons: next.length > pageSize }));
+    }
+    if (tab === "recordings" && recordings.length) {
+      const { data } = await supabase.from("audio_recordings")
+        .select("id,created_at,reference_text,status,storage_path,speaking_assessments(overall_score,transcript)")
+        .eq("user_id", user.id).lt("created_at", recordings.at(-1)!.created_at)
+        .order("created_at", { ascending: false }).limit(pageSize + 1);
+      const next = (data || []) as unknown as RecordingItem[];
+      setRecordings((current) => [...current, ...next.slice(0, pageSize)]);
+      setHasMore((current) => ({ ...current, recordings: next.length > pageSize }));
+    }
+    if (tab === "conversations" && conversations.length) {
+      const { data } = await supabase.from("conversation_sessions")
+        .select("id,scenario,persona,turn_count,status,started_at")
+        .eq("user_id", user.id).lt("started_at", conversations.at(-1)!.started_at)
+        .order("started_at", { ascending: false }).limit(pageSize + 1);
+      const next = (data || []) as ConversationItem[];
+      setConversations((current) => [...current, ...next.slice(0, pageSize)]);
+      setHasMore((current) => ({ ...current, conversations: next.length > pageSize }));
+    }
+    setLoadingMore(false);
+  }
+
+  async function loadPlayback(recording: RecordingItem) {
+    if (recording.playback) return;
+    const { data } = await supabase.storage.from("speaking-recordings").createSignedUrl(recording.storage_path, 900);
+    if (data?.signedUrl) {
+      setRecordings((current) => current.map((item) => item.id === recording.id ? { ...item, playback: data.signedUrl } : item));
+    }
+  }
 
   async function reviewConversation(id: string) {
     if (expandedConversation === id) {
@@ -94,7 +142,7 @@ export default function HistoryPage() {
               {tab === "recordings" && recordings.map((item) => (
                 <article className="recording-item" key={item.id}>
                   <div className="recording-head"><span>●</span><div><h2>{item.reference_text || "Luyện nói tự do"}</h2><p>{new Date(item.created_at).toLocaleString("vi-VN")}</p></div><strong>{item.speaking_assessments?.[0]?.overall_score ? `${Math.round(item.speaking_assessments[0].overall_score!)} điểm` : item.status}</strong></div>
-                  {item.playback && <audio controls preload="none" src={item.playback} />}
+                  {item.playback ? <audio controls autoPlay preload="none" src={item.playback} /> : <button className="review-button" onClick={() => void loadPlayback(item)}>Phát bản ghi</button>}
                   {item.speaking_assessments?.[0]?.transcript && <p className="recording-transcript">{item.speaking_assessments[0].transcript}</p>}
                 </article>
               ))}
@@ -105,6 +153,7 @@ export default function HistoryPage() {
                 </div>
               ))}
               {((tab === "lessons" && !progress.length) || (tab === "recordings" && !recordings.length) || (tab === "conversations" && !conversations.length)) && <div className="empty-state"><span>◇</span><h2>Chưa có hoạt động</h2><p>Hoàn thành bài đầu tiên để bắt đầu lưu hành trình.</p><Link href="/learn">Bắt đầu học</Link></div>}
+              {hasMore[tab] && <button className="history-load-more" disabled={loadingMore} onClick={() => void loadMore()}>{loadingMore ? <span className="spinner" aria-label="Đang lấy thêm lịch sử" /> : "Xem thêm lịch sử"}</button>}
             </div>
           )}
         </>

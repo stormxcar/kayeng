@@ -1,11 +1,17 @@
 "use client";
 
-import { FormEvent, useEffect, useRef, useState } from "react";
+import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
+import dynamic from "next/dynamic";
 import { Bookmark, BookmarkCheck, Headphones, LoaderCircle, Search, Sparkles, Volume2 } from "lucide-react";
 import { PageShell } from "@/components/PageShell";
 import { useDebounce } from "@/lib/hooks/use-debounce";
 import { useAuth } from "@/lib/hooks/use-auth";
 import { useTaskOverlay } from "@/components/TaskOverlay";
+import { LookupDashboard } from "@/components/lookup/LookupDashboard";
+const Translator = dynamic(
+  () => import("@/components/lookup/Translator").then((module) => module.Translator),
+  { ssr: false, loading: () => <div className="skeleton translator-skeleton" aria-label="Đang mở trình dịch" /> },
+);
 
 type Result = {
   word: string; phonetic: string; phonetics: string[]; audio: string; related: string[]; attribution: string; vietnameseDefinition?: string;
@@ -21,20 +27,25 @@ export default function DictionaryPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [saved, setSaved] = useState(false);
+  const [translatorOpen,setTranslatorOpen]=useState(false);
   const audio = useRef<HTMLAudioElement>(null);
   const { runTask } = useTaskOverlay();
+  const closeTranslator = useCallback(() => setTranslatorOpen(false), []);
 
   useEffect(() => {
-    if (debounced.length < 2 || result?.word === debounced.toLowerCase()) { setSuggestions([]); return; }
+    if (debounced.length < 2 || result?.word === debounced.toLowerCase()) return;
     const controller = new AbortController();
     fetch(`https://api.datamuse.com/sug?s=${encodeURIComponent(debounced)}&max=7`, { signal: controller.signal })
       .then((response) => response.json()).then((data: Array<{ word: string }>) => setSuggestions(data.map((item) => item.word))).catch(() => {});
     return () => controller.abort();
   }, [debounced, result?.word]);
+  const visibleSuggestions = debounced.length >= 2 && result?.word !== debounced.toLowerCase() ? suggestions : [];
 
   async function lookup(word: string) {
     if (!word.trim()) return;
     setQuery(word.trim()); setSuggestions([]); setLoading(true); setError(""); setSaved(false);
+    const recent=JSON.parse(localStorage.getItem("kayeng-recent-words")||"[]") as string[];
+    localStorage.setItem("kayeng-recent-words",JSON.stringify([word.trim().toLowerCase(),...recent.filter(item=>item!==word.trim().toLowerCase())].slice(0,8)));
     await runTask(`Đang tra nghĩa của “${word.trim()}”…`, async () => {
       try {
         const response = await fetch(`/api/dictionary?word=${encodeURIComponent(word.trim())}`);
@@ -60,14 +71,16 @@ export default function DictionaryPage() {
 
   return (
     <PageShell eyebrow="KNOWLEDGE HUB" title="Từ điển thông minh">
+      <LookupDashboard onLookup={lookup} onOpenTranslator={()=>{setTranslatorOpen(true);window.setTimeout(()=>document.getElementById("translator")?.scrollIntoView({behavior:"smooth"}),50)}}/>
+      <Translator active={translatorOpen} onClose={closeTranslator}/>
       <section className="dictionary-hero">
         <div><span><Sparkles size={18} />TRA CỨU MIỄN PHÍ</span><h2>Hiểu một từ.<br />Dùng được cả câu.</h2><p>Định nghĩa, IPA, audio, ví dụ, từ đồng nghĩa và từ liên quan trong một nơi.</p></div>
         <form className="dictionary-search" onSubmit={(event: FormEvent) => { event.preventDefault(); lookup(query); }}>
           <Search size={22} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Nhập một từ tiếng Anh…" autoFocus /><button>Tra từ</button>
-          {suggestions.length > 0 && <div className="dictionary-suggestions">{suggestions.map((word) => <button type="button" key={word} onClick={() => lookup(word)}>{word}</button>)}</div>}
+          {visibleSuggestions.length > 0 && <div className="dictionary-suggestions">{visibleSuggestions.map((word) => <button type="button" key={word} onClick={() => lookup(word)}>{word}</button>)}</div>}
         </form>
       </section>
-      {loading && <div className="dictionary-loading"><LoaderCircle className="spin-icon" /><span>Đang mở kho từ vựng</span></div>}
+      {loading && <div className="dictionary-loading" aria-label="Đang tra từ"><LoaderCircle className="spin-icon" /><div><i/><i/><i/></div></div>}
       {error && <div className="empty-state"><Search size={42} /><h2>Chưa tìm thấy</h2><p>{error}</p></div>}
       {result && !loading && (
         <article className="dictionary-entry">

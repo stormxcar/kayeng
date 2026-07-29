@@ -1,5 +1,5 @@
 export type WavRecorder = {
-  stop: () => Promise<{ blob: Blob; durationMs: number }>;
+  stop: () => Promise<{ blob: Blob; durationMs: number; rmsDb: number; clippingRatio: number }>;
 };
 
 function encodeWav(chunks: Float32Array[], inputRate: number) {
@@ -65,9 +65,22 @@ export async function startWavRecording(): Promise<WavRecorder> {
       source.disconnect();
       stream.getTracks().forEach((track) => track.stop());
       await context.close();
+      let sumSquares = 0;
+      let clipped = 0;
+      let sampleCount = 0;
+      for (const chunk of chunks) {
+        for (const sample of chunk) {
+          sumSquares += sample * sample;
+          if (Math.abs(sample) >= .98) clipped += 1;
+          sampleCount += 1;
+        }
+      }
+      const rms = Math.sqrt(sumSquares / Math.max(sampleCount, 1));
       return {
         blob: encodeWav(chunks, context.sampleRate),
         durationMs: Math.round(performance.now() - startedAt),
+        rmsDb: 20 * Math.log10(Math.max(rms, 0.00001)),
+        clippingRatio: clipped / Math.max(sampleCount, 1),
       };
     },
   };

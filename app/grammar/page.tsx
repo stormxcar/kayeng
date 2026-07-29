@@ -1,8 +1,7 @@
-"use client";
-
-import { useMemo, useState } from "react";
-import { AlertTriangle, ArrowRight, BookOpenCheck, CheckCircle2, Search, Sparkles, Volume2, X } from "lucide-react";
+import { AlertTriangle, BookOpenCheck, CheckCircle2, Sparkles, Volume2 } from "lucide-react";
 import { PageShell } from "@/components/PageShell";
+import { GrammarControls, GrammarDialogButton, GrammarDialogClose } from "@/components/learning/GrammarControls";
+import { SpeakButton } from "@/components/learning/SpeakButton";
 
 type GrammarTopic={level:string;title:string;summary:string;formula:string[];uses:string[];examples:Array<{en:string;vi:string;context:string}>;mistakes:Array<{wrong:string;right:string;note:string}>;tip:string};
 const grammar:GrammarTopic[]=[
@@ -21,13 +20,9 @@ const grammar:GrammarTopic[]=[
 ];
 
 export default function GrammarPage(){
-  const [query,setQuery]=useState("");const [level,setLevel]=useState("Tất cả");const [selected,setSelected]=useState<GrammarTopic|null>(null);
-  const filtered=useMemo(()=>grammar.filter(item=>(level==="Tất cả"||item.level===level)&&`${item.title} ${item.summary} ${item.uses.join(" ")}`.toLowerCase().includes(query.toLowerCase())),[query,level]);
-  const speak=(text:string)=>speechSynthesis.speak(new SpeechSynthesisUtterance(text));
   return <PageShell eyebrow="GRAMMAR LIBRARY" title="Ngữ pháp dễ hiểu">
     <section className="knowledge-intro"><div><span><Sparkles size={17}/> HỌC THEO NGỮ CẢNH</span><h2>Không chỉ nhớ công thức.<br/>Hãy hiểu cách dùng.</h2></div><p>Mỗi chủ điểm có công thức, cách dùng, bản dịch, lỗi thường gặp và ví dụ trong đời sống, học tập, công việc.</p></section>
-    <div className="knowledge-toolbar"><label><Search size={18}/><input placeholder="Tìm chủ điểm, cách dùng…" value={query} onChange={e=>setQuery(e.target.value)}/></label><div>{["Tất cả","A1","A2","B1","B2","C1"].map(item=><button className={level===item?"active":""} onClick={()=>setLevel(item)} key={item}>{item}</button>)}</div></div>
-    <div className="grammar-grid">{filtered.map(item=><article key={item.title}><span>{item.level}</span><BookOpenCheck size={25}/><h3>{item.title}</h3><p>{item.summary}</p><blockquote>{item.examples[0].en}</blockquote><button onClick={()=>setSelected(item)}>Mở bài giải thích <ArrowRight size={16}/></button></article>)}</div>
-    {selected&&<div className="grammar-detail-backdrop" onClick={()=>setSelected(null)}><section className="grammar-detail grammar-lesson" role="dialog" aria-modal="true" aria-labelledby="grammar-title" onClick={e=>e.stopPropagation()}><button className="grammar-close" onClick={()=>setSelected(null)} aria-label="Đóng"><X/></button><small>{selected.level} • GRAMMAR DEEP DIVE</small><h2 id="grammar-title">{selected.title}</h2><p>{selected.summary}</p><h3>Công thức</h3><div className="grammar-formula">{selected.formula.map(line=><span key={line}>{line}</span>)}</div><h3>Khi nào sử dụng?</h3><ul>{selected.uses.map(use=><li key={use}><CheckCircle2/>{use}</li>)}</ul><h3>Ví dụ theo ngữ cảnh</h3><div className="context-examples">{selected.examples.map(example=><article key={example.en}><small>{example.context}</small><button onClick={()=>speak(example.en)} aria-label={`Nghe ${example.en}`}><Volume2 size={17}/></button><b>{example.en}</b><span>{example.vi}</span></article>)}</div><h3>Lỗi thường gặp</h3><div className="common-mistakes">{selected.mistakes.map(mistake=><article key={mistake.wrong}><AlertTriangle/><div><del>{mistake.wrong}</del><b>{mistake.right}</b><p>{mistake.note}</p></div></article>)}</div><div className="grammar-tip"><Sparkles/><p><b>Mẹo ghi nhớ</b>{selected.tip}</p></div><button className="lesson-primary" onClick={()=>setSelected(null)}>Đã hiểu, tiếp tục học</button></section></div>}
+    <GrammarControls/>
+    <div className="grammar-grid">{grammar.map((item,index)=>{const id=`grammar-${index}`;return <article data-grammar-card data-level={item.level} data-search={`${item.title} ${item.summary} ${item.uses.join(" ")}`.toLowerCase()} key={item.title}><span>{item.level}</span><BookOpenCheck size={25}/><h3>{item.title}</h3><p>{item.summary}</p><blockquote>{item.examples[0].en}</blockquote><GrammarDialogButton id={id}/><section id={id} popover="auto" className="grammar-detail grammar-lesson"><GrammarDialogClose id={id}/><small>{item.level} • GRAMMAR DEEP DIVE</small><h2>{item.title}</h2><p>{item.summary}</p><h3>Công thức</h3><div className="grammar-formula">{item.formula.map(line=><span key={line}>{line}</span>)}</div><h3>Khi nào sử dụng?</h3><ul>{item.uses.map(use=><li key={use}><CheckCircle2/>{use}</li>)}</ul><h3>Ví dụ theo ngữ cảnh</h3><div className="context-examples">{item.examples.map(example=><article key={example.en}><small>{example.context}</small><SpeakButton text={example.en} label={`Nghe ${example.en}`}><Volume2 size={17}/></SpeakButton><b>{example.en}</b><span>{example.vi}</span></article>)}</div><h3>Lỗi thường gặp</h3><div className="common-mistakes">{item.mistakes.map(mistake=><article key={mistake.wrong}><AlertTriangle/><div><del>{mistake.wrong}</del><b>{mistake.right}</b><p>{mistake.note}</p></div></article>)}</div><div className="grammar-tip"><Sparkles/><p><b>Mẹo ghi nhớ</b>{item.tip}</p></div></section></article>})}</div>
   </PageShell>
 }

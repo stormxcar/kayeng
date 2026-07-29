@@ -24,6 +24,8 @@ export default function CoursePage() {
   const { supabase, user } = useAuth();
   const [course, setCourse] = useState<CourseDetail | null>(null);
   const [progress, setProgress] = useState<Record<string, number>>({});
+  const [unitProgress, setUnitProgress] = useState<Record<string, number>>({});
+  const [courseProgress, setCourseProgress] = useState(0);
 
   useEffect(() => {
     supabase
@@ -43,18 +45,29 @@ export default function CoursePage() {
     });
   }, [supabase, user]);
 
+  useEffect(() => {
+    if (!user || !course) return;
+    Promise.all([
+      supabase.from("user_unit_progress").select("unit_id,percent_complete").eq("course_id", course.id),
+      supabase.from("user_course_progress").select("percent_complete").eq("course_id", course.id).maybeSingle(),
+    ]).then(([units, summary]) => {
+      setUnitProgress(Object.fromEntries((units.data || []).map((item) => [item.unit_id, item.percent_complete])));
+      setCourseProgress(summary.data?.percent_complete || 0);
+    });
+  }, [course, supabase, user]);
+
   if (!course) return <CourseLoadingView />;
 
   return (
     <PageShell eyebrow={`LỘ TRÌNH ${course.cefr_level}`} title={course.title}>
       <section className="course-hero">
-        <div><p>{course.description}</p><div className="course-meta"><span>◷ 15 phút/ngày</span><span>✦ Phản xạ giao tiếp</span></div></div>
+        <div><p>{course.description}</p><div className="course-meta"><span>◷ 15 phút/ngày</span><span>✦ Phản xạ giao tiếp</span>{user&&<span>✓ {courseProgress}% khóa học</span>}</div></div>
         <div className="course-level">{course.cefr_level}</div>
       </section>
       <div className="unit-list">
         {course.units.map((unit, unitIndex) => (
           <section className="unit-card" key={unit.id}>
-            <header><span>{String(unitIndex + 1).padStart(2, "0")}</span><div><h2>{unit.title}</h2><p>{unit.description}</p></div></header>
+            <header><span>{String(unitIndex + 1).padStart(2, "0")}</span><div><h2>{unit.title}</h2><p>{unit.description}</p>{user&&<div className="unit-rollup"><i style={{width:`${unitProgress[unit.id]||0}%`}}/><small>{unitProgress[unit.id]||0}% unit</small></div>}</div></header>
             <div className="unit-lessons">
               {unit.lessons.map((lesson, lessonIndex) => {
                 const percent = progress[lesson.id] || 0;

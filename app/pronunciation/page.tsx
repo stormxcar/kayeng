@@ -1,8 +1,7 @@
-"use client";
-
-import { useMemo, useState } from "react";
-import { AudioLines, Ear, Info, Mic2, Search, Volume2 } from "lucide-react";
+import { AudioLines, Ear, Info, Mic2, Volume2 } from "lucide-react";
 import { PageShell } from "@/components/PageShell";
+import { IpaControls } from "@/components/learning/IpaControls";
+import { SpeakButton } from "@/components/learning/SpeakButton";
 
 type Sound={symbol:string;type:"Nguyên âm đơn"|"Nguyên âm đôi"|"Phụ âm";name:string;guide:string;examples:Array<[string,string,string]>;contrast?:string};
 const sounds:Sound[]=[
@@ -52,13 +51,10 @@ const sounds:Sound[]=[
 ];
 
 export default function PronunciationPage(){
-  const [type,setType]=useState("Tất cả");const [query,setQuery]=useState("");const [selected,setSelected]=useState<Sound|null>(sounds[0]);
-  const filtered=useMemo(()=>sounds.filter(sound=>(type==="Tất cả"||sound.type===type)&&`${sound.symbol} ${sound.name} ${sound.examples.flat().join(" ")}`.toLowerCase().includes(query.toLowerCase())),[type,query]);
-  const speak=(word:string)=>{const utterance=new SpeechSynthesisUtterance(word);utterance.lang="en-US";utterance.rate=.75;speechSynthesis.cancel();speechSynthesis.speak(utterance)};
   return <PageShell eyebrow="PRONUNCIATION LAB" title="Bảng phiên âm IPA">
     <section className="ipa-hero"><div><AudioLines size={36}/><small>44 ÂM TIẾNG ANH</small><h2>Nhìn âm. Nghe âm.<br/>Tự tin phát âm.</h2><p>Chạm vào từng ký hiệu để xem vị trí môi–lưỡi, nghe từ mẫu và phân biệt những cặp âm dễ nhầm.</p></div><div className="ipa-tip"><Ear/><b>Học bằng tai trước</b><p>Nghe → quan sát khẩu hình → bắt chước → ghi âm → so sánh.</p></div></section>
-    <div className="knowledge-toolbar ipa-toolbar"><label><Search size={18}/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Tìm âm hoặc từ ví dụ…"/></label><div>{["Tất cả","Nguyên âm đơn","Nguyên âm đôi","Phụ âm"].map(item=><button className={type===item?"active":""} onClick={()=>setType(item)} key={item}>{item}</button>)}</div></div>
-    <div className="ipa-layout"><section className="ipa-chart">{["Nguyên âm đơn","Nguyên âm đôi","Phụ âm"].map(group=>{const groupSounds=filtered.filter(sound=>sound.type===group);return groupSounds.length?<div key={group}><h2>{group}<small>{groupSounds.length} âm</small></h2><div>{groupSounds.map(sound=><button className={selected?.symbol===sound.symbol?"active":""} onClick={()=>setSelected(sound)} key={sound.symbol}><b>{sound.symbol}</b><span>{sound.examples[0][0]}</span></button>)}</div></div>:null})}</section>
-    <aside className="ipa-detail">{selected?<><header><div><small>{selected.type}</small><h2>{selected.symbol}</h2><b>{selected.name}</b></div><button onClick={()=>speak(selected.examples[0][0])}><Volume2/> Nghe âm mẫu</button></header><section><h3><Mic2/> Khẩu hình và cách tạo âm</h3><p>{selected.guide}</p></section>{selected.contrast&&<div className="ipa-contrast"><Info/><p><b>Dễ nhầm với</b>{selected.contrast}. Nghe xen kẽ và chú ý độ dài hoặc độ rung.</p></div>}<section><h3>Ví dụ thực tế</h3><div className="ipa-examples">{selected.examples.map(([word,ipa,meaning])=><button onClick={()=>speak(word)} key={word}><Volume2/><span><b>{word}</b><small>{ipa}</small></span><em>{meaning}</em></button>)}</div></section><section className="ipa-practice"><h3>Mini practice</h3><p>Nói từng từ chậm, sau đó đặt từ đầu tiên vào câu: “I can see it clearly.”</p></section></>:<p>Chọn một âm trong bảng để bắt đầu.</p>}</aside></div>
+    <IpaControls/>
+    <div className="ipa-layout"><section className="ipa-chart">{["Nguyên âm đơn","Nguyên âm đôi","Phụ âm"].map(group=><div key={group}><h2>{group}<small>{sounds.filter(sound=>sound.type===group).length} âm</small></h2><div>{sounds.filter(sound=>sound.type===group).map((sound,index)=><button data-ipa-sound data-ipa-trigger data-ipa={sound.symbol} data-type={sound.type} data-search={`${sound.symbol} ${sound.name} ${sound.examples.flat().join(" ")}`.toLowerCase()} className={index===0&&group==="Nguyên âm đơn"?"active":""} key={sound.symbol}><b>{sound.symbol}</b><span>{sound.examples[0][0]}</span></button>)}</div></div>)}</section>
+    <aside className="ipa-detail">{sounds.map((sound,index)=><div data-ipa-detail data-ipa={sound.symbol} hidden={index!==0} key={sound.symbol}><header><div><small>{sound.type}</small><h2>{sound.symbol}</h2><b>{sound.name}</b></div><SpeakButton text={sound.examples[0][0]}><Volume2/> Nghe âm mẫu</SpeakButton></header><section><h3><Mic2/> Khẩu hình và cách tạo âm</h3><p>{sound.guide}</p></section>{sound.contrast&&<div className="ipa-contrast"><Info/><p><b>Dễ nhầm với</b>{sound.contrast}. Nghe xen kẽ và chú ý độ dài hoặc độ rung.</p></div>}<section><h3>Ví dụ thực tế</h3><div className="ipa-examples">{sound.examples.map(([word,ipa,meaning])=><SpeakButton text={word} key={word}><Volume2/><span><b>{word}</b><small>{ipa}</small></span><em>{meaning}</em></SpeakButton>)}</div></section><section className="ipa-practice"><h3>Mini practice</h3><p>Nói từng từ chậm, sau đó đặt từ đầu tiên vào câu hoàn chỉnh.</p></section></div>)}</aside></div>
   </PageShell>
 }

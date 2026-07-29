@@ -12,6 +12,10 @@ const RoleplayActivity = dynamic(() => import("./RoleplayActivity"), {
   loading: () => <div className="skeleton activity-skeleton" />,
   ssr: false,
 });
+const StructuredActivity = dynamic(() => import("./StructuredActivity"), {
+  loading: () => <div className="skeleton activity-skeleton" />,
+  ssr: false,
+});
 
 export type Activity = {
   id: string;
@@ -39,9 +43,19 @@ export function ActivityRenderer({
   if (activity.activity_type === "roleplay") {
     return <RoleplayActivity activity={activity} onComplete={() => onSubmit({ roleplay: true }, 100, true)} />;
   }
+  if (["multiple_select","matching","ordering","dictation","image_choice","video_checkpoint","essay","short_answer","reading"].includes(activity.activity_type)) {
+    return <StructuredActivity activity={activity} onSubmit={onSubmit} />;
+  }
 
   const words = Array.isArray(activity.content.words) ? (activity.content.words as string[]) : [];
   const interactiveType = ["multiple_choice", "fill_blank", "quiz"].includes(activity.activity_type) || options.length > 0 || Boolean(activity.content.correct_answer);
+  async function completeActivity() {
+    await onSubmit({ answer: answer || "reviewed" }, interactiveType ? (isCorrect ? 100 : 30) : 100, interactiveType ? isCorrect : true);
+    if (interactiveType && !isCorrect) {
+      setChecked(false);
+      setAnswer("");
+    }
+  }
   return (
     <div className="activity-panel">
       <p className="activity-type">{activity.activity_type.toUpperCase()}</p>
@@ -60,7 +74,7 @@ export function ActivityRenderer({
         <p>{String(activity.content.example || "Hãy đọc, nghe và sử dụng nội dung này trong một câu của riêng bạn.")}</p>
       </div>
       {interactiveType && !checked ? <button className="lesson-primary" disabled={!answer} onClick={() => setChecked(true)}>Kiểm tra</button> :
-        <button className="lesson-primary" onClick={() => onSubmit({ answer: answer || "reviewed" }, interactiveType ? (isCorrect ? 100 : 30) : 100, interactiveType ? isCorrect : true)}>Hoàn thành hoạt động</button>}
+        <button className="lesson-primary" onClick={() => void completeActivity()}>{interactiveType && !isCorrect ? "Thử lại" : "Hoàn thành hoạt động"}</button>}
     </div>
   );
 }

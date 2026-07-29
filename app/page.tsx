@@ -1,13 +1,12 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import type { User } from "@supabase/supabase-js";
 import Link from "next/link";
 import Image from "next/image";
 import { ArrowUpRight, BookOpenCheck, Flame, Headphones, Mic, Moon, Play, Sun } from "lucide-react";
 import { AppNav } from "@/components/AppNav";
 import { startWavRecording, type WavRecorder } from "@/lib/audio/wav-recorder";
-import { createClient } from "@/lib/supabase/client";
+import { useAuth } from "@/lib/hooks/use-auth";
 import { CustomSelect, dailyGoalOptions, levelOptions, occupationOptions } from "@/components/CustomSelect";
 import { TaskOverlayBridge } from "@/components/TaskOverlay";
 
@@ -18,7 +17,7 @@ const lessons = [
 ];
 
 export default function Home() {
-  const supabaseRef = useRef(createClient());
+  const {user,profile,supabase,refreshProfile}=useAuth();
   const recorderRef = useRef<WavRecorder | null>(null);
   const [recording, setRecording] = useState(false);
   const [seconds, setSeconds] = useState(0);
@@ -26,15 +25,15 @@ export default function Home() {
   const [result, setResult] = useState<{ score?: number; message: string; transcript?: string }>({
     message: "",
   });
-  const [user, setUser] = useState<User | null>(null);
-  const [profile, setProfile] = useState<Record<string, unknown> | null>(null);
   const [authOpen, setAuthOpen] = useState(false);
   const [authMode, setAuthMode] = useState<"login" | "signup">("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [authError, setAuthError] = useState("");
   const [busy, setBusy] = useState(false);
-  const [theme, setTheme] = useState<"light" | "dark">("light");
+  const [theme, setTheme] = useState<"light" | "dark">(() =>
+    typeof document !== "undefined" && document.documentElement.dataset.theme === "dark" ? "dark" : "light"
+  );
   const [dbLessons, setDbLessons] = useState<Array<{ id: string; title: string; estimated_minutes: number }>>([]);
   const [learningStats, setLearningStats] = useState({ completedMinutes: 0, targetMinutes: 15, streak: 0, completedLessons: 0, recordings: 0 });
 
@@ -45,15 +44,6 @@ export default function Home() {
   }, [recording]);
 
   useEffect(() => {
-    const supabase = supabaseRef.current;
-    supabase.auth.getUser().then(({ data }) => setUser(data.user));
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
-    });
-    return () => listener.subscription.unsubscribe();
-  }, []);
-
-  useEffect(() => {
     const stored = localStorage.getItem("kayeng-theme");
     const preferred =
       stored === "dark" || stored === "light"
@@ -61,7 +51,6 @@ export default function Home() {
         : window.matchMedia("(prefers-color-scheme: dark)").matches
           ? "dark"
           : "light";
-    setTheme(preferred);
     document.documentElement.dataset.theme = preferred;
   }, []);
 
@@ -73,15 +62,7 @@ export default function Home() {
   }
 
   useEffect(() => {
-    if (!user) {
-      setProfile(null);
-      return;
-    }
-    const supabase = supabaseRef.current;
-    supabase.from("profiles").select("*").eq("id", user.id).single().then(({ data }) => {
-      setProfile(data);
-      if (data?.daily_goal_minutes) setLearningStats((stats) => ({ ...stats, targetMinutes: data.daily_goal_minutes }));
-    });
+    if (!user) return;
     supabase
       .from("lessons")
       .select("id,title,estimated_minutes")
@@ -96,12 +77,12 @@ export default function Home() {
     ]).then(([daily, streak, lessonsResult, recordingsResult]) => setLearningStats((stats) => ({
       ...stats,
       completedMinutes: daily.data?.completed_minutes || 0,
-      targetMinutes: daily.data?.target_minutes || stats.targetMinutes,
+      targetMinutes: daily.data?.target_minutes || profile?.daily_goal_minutes || stats.targetMinutes,
       streak: streak.data?.current_streak || 0,
       completedLessons: lessonsResult.count || 0,
       recordings: recordingsResult.count || 0,
     })));
-  }, [user]);
+  }, [profile?.daily_goal_minutes, supabase, user]);
 
   async function submitAuth(event: React.FormEvent) {
     event.preventDefault();
@@ -116,7 +97,6 @@ export default function Home() {
     }
     setBusy(true);
     setAuthError("");
-    const supabase = supabaseRef.current;
     const action =
       authMode === "login"
         ? supabase.auth.signInWithPassword({ email: normalizedEmail, password })
@@ -150,7 +130,7 @@ export default function Home() {
     if (learningGoalValue.length < 10 || learningGoalValue.length > 300) return setAuthError("Mục tiêu học tập cần từ 10 đến 300 ký tự.");
     setAuthError("");
     setBusy(true);
-    const { data } = await supabaseRef.current
+    const { error } = await supabase
       .from("profiles")
       .update({
         display_name: displayNameValue,
@@ -163,7 +143,8 @@ export default function Home() {
       .eq("id", user.id)
       .select()
       .single();
-    setProfile(data);
+    if (error) setAuthError(error.message);
+    else await refreshProfile();
     setBusy(false);
   }
 
@@ -194,7 +175,7 @@ export default function Home() {
       setResult({ message: "" });
       setShowResult(true);
       try {
-        const { data: sessionData } = await supabaseRef.current.auth.getSession();
+        const { data: sessionData } = await supabase.auth.getSession();
         const token = sessionData.session?.access_token;
         const signedResponse = await fetch("/api/recordings/signed-upload", {
           method: "POST",
@@ -206,13 +187,13 @@ export default function Home() {
         });
         const signed = await signedResponse.json();
         if (!signedResponse.ok) throw new Error(signed.error);
-        const { error: uploadError } = await supabaseRef.current.storage
+        const { error: uploadError } = await supabase.storage
           .from("speaking-recordings")
           .uploadToSignedUrl(signed.path, signed.token, recordingData.blob, {
             contentType: "audio/wav",
           });
         if (uploadError) throw uploadError;
-        await supabaseRef.current
+        await supabase
           .from("audio_recordings")
           .update({ status: "uploaded" })
           .eq("id", signed.recordingId);
@@ -253,7 +234,7 @@ export default function Home() {
     }
   }
 
-  const displayName = (profile?.display_name as string) || user?.email?.split("@")[0] || "Minh";
+  const displayName = profile?.display_name || user?.email?.split("@")[0] || "Minh";
 
   return (
     <>
@@ -287,7 +268,7 @@ export default function Home() {
               data-tour="profile"
               data-tooltip="Hồ sơ cá nhân"
               aria-label={user ? "Đăng xuất" : "Đăng nhập"}
-              onClick={() => (user ? supabaseRef.current.auth.signOut() : setAuthOpen(true))}
+              onClick={() => (user ? supabase.auth.signOut() : setAuthOpen(true))}
             >
               {displayName.slice(0, 1).toUpperCase()}
             </button>
