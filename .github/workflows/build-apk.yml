@@ -30,6 +30,20 @@ jobs:
           distribution: 'temurin'
           java-version: '21'
 
+      - name: Configure public mobile environment
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
+          NEXT_PUBLIC_MOBILE_API_URL: https://kayeng-english.nguyenkhaa223.chatgpt.site
+        run: |
+          test -n "$NEXT_PUBLIC_SUPABASE_URL" || (echo "Missing GitHub secret: NEXT_PUBLIC_SUPABASE_URL" && exit 1)
+          test -n "$NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY" || (echo "Missing GitHub secret: NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY" && exit 1)
+          {
+            echo "NEXT_PUBLIC_SUPABASE_URL=$NEXT_PUBLIC_SUPABASE_URL"
+            echo "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=$NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY"
+            echo "NEXT_PUBLIC_MOBILE_API_URL=$NEXT_PUBLIC_MOBILE_API_URL"
+          } >> "$GITHUB_ENV"
+
       - name: Build Web App Static Export
         run: npx next build
 
