@@ -1,5 +1,9 @@
+"use client";
+
 import Link from "next/link";
 import { createClient } from "@supabase/supabase-js";
+import { Suspense, useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { ArrowRight, BookOpenCheck, Clock3, GraduationCap, Search, Sparkles, Target } from "lucide-react";
 import { PageShell } from "@/components/PageShell";
 import { courseCatalog } from "./catalog";
@@ -29,15 +33,15 @@ async function getPublishedCourses() {
   return (data || []) as DatabaseCourse[];
 }
 
-export default async function LearnPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ q?: string; category?: string; level?: string }>;
-}) {
-  const [params, databaseCourses] = await Promise.all([searchParams, getPublishedCourses()]);
-  const query = (params.q || "").trim();
-  const category = categories.includes(params.category as (typeof categories)[number]) ? params.category! : "Tất cả";
-  const level = levels.includes(params.level as (typeof levels)[number]) ? params.level! : "Tất cả";
+function LearnCatalog() {
+  const searchParams = useSearchParams();
+  const [databaseCourses, setDatabaseCourses] = useState<DatabaseCourse[]>([]);
+  useEffect(() => { void getPublishedCourses().then(setDatabaseCourses); }, []);
+  const query = (searchParams.get("q") || "").trim();
+  const requestedCategory = searchParams.get("category");
+  const requestedLevel = searchParams.get("level");
+  const category = categories.includes(requestedCategory as (typeof categories)[number]) ? requestedCategory! : "Tất cả";
+  const level = levels.includes(requestedLevel as (typeof levels)[number]) ? requestedLevel! : "Tất cả";
   const merged = courseCatalog.map((course) => {
     const stored = databaseCourses.find((item) => item.slug === course.slug);
     return {
@@ -76,4 +80,8 @@ export default async function LearnPage({
     </section>
     <section className="catalog-principles"><article><BookOpenCheck/><h3>Kiến thức có cấu trúc</h3><p>Mỗi khóa đi từ input, nhận biết, luyện có hướng dẫn đến sử dụng trong ngữ cảnh.</p></article><article><Target/><h3>Đo được đầu ra</h3><p>Mỗi chặng gắn với một “can-do statement” thay vì chỉ đếm số câu đã làm.</p></article><article><Sparkles/><h3>Miễn phí và mở</h3><p>XP ghi nhận nỗ lực; không có khóa học nào bị khóa vì cấp độ hay thành tích.</p></article></section>
   </PageShell>;
+}
+
+export default function LearnPage() {
+  return <Suspense fallback={<div className="route-skeleton"><div className="skeleton hero-skeleton" /></div>}><LearnCatalog /></Suspense>;
 }

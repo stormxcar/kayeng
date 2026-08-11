@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 
+export const dynamic = "force-static";
+
 const encoder = new TextEncoder();
 function splitText(text:string){
   const pieces=text.replace(/\r\n/g,"\n").split(/(?<=[.!?])\s+|\n+/).filter(Boolean);

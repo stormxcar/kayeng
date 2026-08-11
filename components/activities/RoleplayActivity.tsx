@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import type { Activity } from "./ActivityRenderer";
 import { createClient } from "@/lib/supabase/client";
 import { TaskOverlayBridge } from "@/components/TaskOverlay";
+import { apiUrl } from "@/lib/runtime-api";
 
 type Turn = { speaker: "learner" | "ai"; content: string };
 
@@ -15,7 +16,7 @@ export default function RoleplayActivity({ activity, onComplete }: { activity: A
   const [sessionId, setSessionId] = useState<string>();
 
   useEffect(() => {
-    fetch("/api/capabilities").then((response) => response.json()).then((data) => setEnabled(Boolean(data.ai)));
+    fetch(apiUrl("/api/capabilities")).then((response) => response.json()).then((data) => setEnabled(Boolean(data.ai)));
   }, []);
 
   async function send(event: React.FormEvent) {
@@ -27,7 +28,7 @@ export default function RoleplayActivity({ activity, onComplete }: { activity: A
     setTurns(nextTurns);
     setBusy(true);
     const { data } = await createClient().auth.getSession();
-    const response = await fetch("/api/conversation/turn", {
+    const response = await fetch(apiUrl("/api/conversation/turn"), {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${data.session?.access_token}` },
       body: JSON.stringify({

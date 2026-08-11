@@ -30,6 +30,9 @@ jobs:
           distribution: 'temurin'
           java-version: '21'
 
+      - name: Build Web App Static Export
+        run: npx next build
+
       - name: Sync Capacitor Android
         run: npx cap sync android
 

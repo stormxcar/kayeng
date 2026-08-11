@@ -3,6 +3,8 @@ import { courseCatalog } from "./learn/catalog";
 import { libraryItems } from "./library/library-data";
 import { topicCategories } from "./topics/topic-data";
 
+export const dynamic = "force-static";
+
 const baseUrl = "https://kayeng-english.nguyenkhaa223.chatgpt.site";
 
 export default function sitemap(): MetadataRoute.Sitemap {

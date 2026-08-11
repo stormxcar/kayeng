@@ -9,9 +9,9 @@
     "dev": "npx --yes --package node@22 node node_modules/next/dist/bin/next dev -p 3000",
     "build": "cross-env WRANGLER_LOG_PATH=.wrangler/wrangler.log vinext build",
     "start": "cross-env WRANGLER_LOG_PATH=.wrangler/wrangler.log vinext start",
-    "mobile:build": "cap sync",
-    "mobile:android": "npm run mobile:build && cap open android",
-    "mobile:ios": "npm run mobile:build && cap open ios",
+    "mobile:build": "npx --yes --package node@22 node node_modules/next/dist/bin/next build && npx --yes --package node@22 node node_modules/@capacitor/cli/bin/capacitor sync",
+    "mobile:android": "npm run mobile:build && npx --yes --package node@22 node node_modules/@capacitor/cli/bin/capacitor open android",
+    "mobile:ios": "npm run mobile:build && npx --yes --package node@22 node node_modules/@capacitor/cli/bin/capacitor open ios",
     "test": "npm run build && node --test tests/rendered-html.test.mjs",
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next",
     "db:generate": "drizzle-kit generate"

@@ -9,6 +9,7 @@ import { startWavRecording, type WavRecorder } from "@/lib/audio/wav-recorder";
 import { useAuth } from "@/lib/hooks/use-auth";
 import { CustomSelect, dailyGoalOptions, levelOptions, occupationOptions } from "@/components/CustomSelect";
 import { TaskOverlayBridge } from "@/components/TaskOverlay";
+import { apiUrl } from "@/lib/runtime-api";
 
 const lessons = [
   { title: "Chào hỏi tự nhiên", detail: "Từ vựng • 4 phút", status: "done", icon: "Aa" },
@@ -177,7 +178,7 @@ export default function Home() {
       try {
         const { data: sessionData } = await supabase.auth.getSession();
         const token = sessionData.session?.access_token;
-        const signedResponse = await fetch("/api/recordings/signed-upload", {
+        const signedResponse = await fetch(apiUrl("/api/recordings/signed-upload"), {
           method: "POST",
           headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
           body: JSON.stringify({
@@ -197,7 +198,7 @@ export default function Home() {
           .from("audio_recordings")
           .update({ status: "uploaded" })
           .eq("id", signed.recordingId);
-        const assessmentResponse = await fetch("/api/assessments/pronunciation", {
+        const assessmentResponse = await fetch(apiUrl("/api/assessments/pronunciation"), {
           method: "POST",
           headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
           body: JSON.stringify({ recordingId: signed.recordingId }),

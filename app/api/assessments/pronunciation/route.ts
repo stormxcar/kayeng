@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { createAuthenticatedClient } from "@/lib/supabase/authenticated";
 
+export const dynamic = "force-static";
+
 type AzureWord = {
   Word?: string;
   PronunciationAssessment?: { AccuracyScore?: number; ErrorType?: string };

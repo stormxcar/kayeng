@@ -5,6 +5,7 @@ import type { Activity } from "./ActivityRenderer";
 import { startWavRecording, type WavRecorder } from "@/lib/audio/wav-recorder";
 import { createClient } from "@/lib/supabase/client";
 import { TaskOverlayBridge } from "@/components/TaskOverlay";
+import { apiUrl } from "@/lib/runtime-api";
 
 type Assessment = {
   score?: number;
@@ -53,7 +54,7 @@ export default function VoiceActivity({ activity, onComplete }: { activity: Acti
       const { data: sessionData } = await supabase.auth.getSession();
       const token = sessionData.session?.access_token;
       if (!token) throw new Error("Hãy đăng nhập để lưu bài nói.");
-      const signedResponse = await fetch("/api/recordings/signed-upload", {
+      const signedResponse = await fetch(apiUrl("/api/recordings/signed-upload"), {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({ activityId: activity.id, durationMs: captured.durationMs, referenceText }),
@@ -63,7 +64,7 @@ export default function VoiceActivity({ activity, onComplete }: { activity: Acti
       const { error } = await supabase.storage.from("speaking-recordings").uploadToSignedUrl(signed.path, signed.token, captured.blob, { contentType: "audio/wav" });
       if (error) throw error;
       await supabase.from("audio_recordings").update({ status: "uploaded" }).eq("id", signed.recordingId);
-      const response = await fetch("/api/assessments/pronunciation", {
+      const response = await fetch(apiUrl("/api/assessments/pronunciation"), {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({ recordingId: signed.recordingId }),

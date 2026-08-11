@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { useReportWebVitals } from "next/web-vitals";
+import { apiUrl, isNativeApp } from "@/lib/runtime-api";
 
 export function RuntimeQuality() {
   useReportWebVitals((metric) => {
@@ -12,11 +13,11 @@ export function RuntimeQuality() {
       rating: metric.rating,
       path: location.pathname,
     });
-    if (navigator.sendBeacon) navigator.sendBeacon("/api/vitals", body);
+    if (navigator.sendBeacon) navigator.sendBeacon(apiUrl("/api/vitals"), body);
   });
 
   useEffect(() => {
-    if (!("serviceWorker" in navigator) || process.env.NODE_ENV !== "production") return;
+    if (!("serviceWorker" in navigator) || process.env.NODE_ENV !== "production" || isNativeApp()) return;
     navigator.serviceWorker.register("/sw.js").catch((error) => {
       console.warn("Kayeng service worker registration failed", error);
     });

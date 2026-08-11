@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { ArrowLeft, ArrowRight, CheckCircle2, RotateCcw } from "lucide-react";
 import { ActivityRenderer, type Activity } from "@/components/activities/ActivityRenderer";
@@ -17,7 +17,8 @@ type Lesson = {
 };
 
 export default function LessonPage() {
-  const { id } = useParams<{ id: string }>();
+  const { id: routeId } = useParams<{ id?: string }>();
+  const id = useSearchParams().get("id") || routeId;
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
   const [lesson, setLesson] = useState<Lesson | null>(null);
@@ -32,7 +33,7 @@ export default function LessonPage() {
       const { data } = await supabase
       .from("lessons")
       .select("id,title,description,estimated_minutes,lesson_activities(id,activity_type,title,instructions,content)")
-      .eq("id", id)
+      .eq("id", id || "")
       .order("sort_order", { referencedTable: "lesson_activities" })
       .single();
       const loaded = data as Lesson | null;

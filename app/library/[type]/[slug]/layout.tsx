@@ -1,5 +1,9 @@
 import type { Metadata } from "next";
-import { libraryByKey } from "../../library-data";
+import { libraryByKey, libraryItems } from "../../library-data";
+
+export function generateStaticParams() {
+  return libraryItems.map(({ type, slug }) => ({ type, slug }));
+}
 
 export function generateMetadata({ params }: { params: Promise<{ type: string; slug: string }> }): Promise<Metadata> {
   return params.then(({ type, slug }) => {

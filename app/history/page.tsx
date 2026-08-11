@@ -136,7 +136,7 @@ export default function HistoryPage() {
                 <article className="history-item" key={item.lesson_id}>
                   <span className={item.status === "completed" ? "history-icon done" : "history-icon"}>{item.status === "completed" ? "✓" : "◷"}</span>
                   <div><small>{item.lessons?.units?.courses?.title}</small><h2>{item.lessons?.title}</h2><p>{new Date(item.completed_at || item.updated_at).toLocaleDateString("vi-VN")} • {item.percent_complete}% hoàn thành</p></div>
-                  <Link href={`/lesson/${item.lesson_id}`}>{item.status === "completed" ? "Xem lại" : "Tiếp tục"} →</Link>
+                  <Link href={`/lesson?id=${item.lesson_id}`}>{item.status === "completed" ? "Xem lại" : "Tiếp tục"} →</Link>
                 </article>
               ))}
               {tab === "recordings" && recordings.map((item) => (

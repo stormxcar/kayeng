@@ -1,5 +1,9 @@
 import type { Metadata } from "next";
-import { topicBySlug } from "../topic-data";
+import { topicBySlug, topicCategories } from "../topic-data";
+
+export function generateStaticParams() {
+  return topicCategories.map(({ slug }) => ({ slug }));
+}
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;

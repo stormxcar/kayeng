@@ -8,6 +8,7 @@ import { useDebounce } from "@/lib/hooks/use-debounce";
 import { useAuth } from "@/lib/hooks/use-auth";
 import { useTaskOverlay } from "@/components/TaskOverlay";
 import { LookupDashboard } from "@/components/lookup/LookupDashboard";
+import { apiUrl } from "@/lib/runtime-api";
 const Translator = dynamic(
   () => import("@/components/lookup/Translator").then((module) => module.Translator),
   { ssr: false, loading: () => <div className="skeleton translator-skeleton" aria-label="Đang mở trình dịch" /> },
@@ -48,7 +49,7 @@ export default function DictionaryPage() {
     localStorage.setItem("kayeng-recent-words",JSON.stringify([word.trim().toLowerCase(),...recent.filter(item=>item!==word.trim().toLowerCase())].slice(0,8)));
     await runTask(`Đang tra nghĩa của “${word.trim()}”…`, async () => {
       try {
-        const response = await fetch(`/api/dictionary?word=${encodeURIComponent(word.trim())}`);
+        const response = await fetch(apiUrl(`/api/dictionary?word=${encodeURIComponent(word.trim())}`));
         const data = await response.json();
         if (!response.ok) { setResult(null); setError(data.error); return; }
         setResult(data);

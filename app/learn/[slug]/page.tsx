@@ -72,7 +72,7 @@ export default function CoursePage() {
               {unit.lessons.map((lesson, lessonIndex) => {
                 const percent = progress[lesson.id] || 0;
                 return (
-                  <Link href={`/lesson/${lesson.id}`} key={lesson.id} className="course-lesson">
+                  <Link href={`/lesson?id=${lesson.id}`} key={lesson.id} className="course-lesson">
                     <span className={percent === 100 ? "lesson-number completed" : "lesson-number"}>{percent === 100 ? "✓" : lessonIndex + 1}</span>
                     <div><strong>{lesson.title}</strong><small>{lesson.estimated_minutes} phút • {lesson.xp_reward} XP</small></div>
                     <div className="mini-progress"><i style={{ width: `${percent}%` }} /></div>

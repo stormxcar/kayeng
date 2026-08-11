@@ -5,6 +5,7 @@ import Image from "next/image";
 import { ArrowRightLeft, Check, Clipboard, FileText, Image as ImageIcon, Languages, RotateCcw, ShieldCheck, Sparkles, Upload, X } from "lucide-react";
 import { useTaskOverlay } from "@/components/TaskOverlay";
 import { useDialogFocusTrap } from "@/lib/hooks/use-dialog-focus-trap";
+import { apiUrl } from "@/lib/runtime-api";
 
 type Direction={source:"en"|"vi";target:"en"|"vi"};
 type TranslationRecord={source:string;translated:string;direction:string;at:string};
@@ -17,7 +18,7 @@ export function Translator({active,onClose}:{active:boolean;onClose:()=>void}){
   async function translate(){
     if(!text.trim())return setError("Hãy nhập hoặc trích xuất nội dung trước khi dịch.");
     if(text.length>3000)return setError("Mỗi lần dịch tối đa 3.000 ký tự.");
-    setError("");await runTask("Đang dịch và giữ nguyên cấu trúc câu…",async()=>{const response=await fetch("/api/translate",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({...direction,text})});const data=await response.json();if(!response.ok){setError(data.error);return}setTranslated(data.translatedText);const record={source:text.slice(0,240),translated:String(data.translatedText).slice(0,240),direction:`${direction.source}-${direction.target}`,at:new Date().toISOString()};const next=[record,...history].slice(0,6);setHistory(next);localStorage.setItem("kayeng-translation-history",JSON.stringify(next))})}
+    setError("");await runTask("Đang dịch và giữ nguyên cấu trúc câu…",async()=>{const response=await fetch(apiUrl("/api/translate"),{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({...direction,text})});const data=await response.json();if(!response.ok){setError(data.error);return}setTranslated(data.translatedText);const record={source:text.slice(0,240),translated:String(data.translatedText).slice(0,240),direction:`${direction.source}-${direction.target}`,at:new Date().toISOString()};const next=[record,...history].slice(0,6);setHistory(next);localStorage.setItem("kayeng-translation-history",JSON.stringify(next))})}
   async function selectFile(file?:File){
     if(!file)return;setError("");setTranslated("");setFileName(file.name);
     if(preview){URL.revokeObjectURL(preview);setPreview("")}
@@ -29,7 +30,7 @@ export function Translator({active,onClose}:{active:boolean;onClose:()=>void}){
     if(!allowed.includes(file.type))return setError("Chỉ hỗ trợ TXT, MD, CSV, JPG, PNG, WebP hoặc PDF.");
     if(file.size>1024*1024)return setError("Ảnh/PDF tối đa 1 MB và PDF tối đa 3 trang.");
     if(file.type.startsWith("image/"))setPreview(URL.createObjectURL(file));
-    await runTask("Đang đọc chữ trong tệp…",async()=>{const body=new FormData();body.append("file",file);body.append("language",direction.source==="vi"?"vie":"eng");const response=await fetch("/api/translate/extract",{method:"POST",body});const data=await response.json();if(!response.ok){setError(data.error);return}setText(data.text);if(data.truncated)setError("Văn bản dài đã được rút gọn còn 3.000 ký tự.")})}
+    await runTask("Đang đọc chữ trong tệp…",async()=>{const body=new FormData();body.append("file",file);body.append("language",direction.source==="vi"?"vie":"eng");const response=await fetch(apiUrl("/api/translate/extract"),{method:"POST",body});const data=await response.json();if(!response.ok){setError(data.error);return}setText(data.text);if(data.truncated)setError("Văn bản dài đã được rút gọn còn 3.000 ký tự.")})}
   async function copy(){await navigator.clipboard.writeText(translated);setCopied(true);window.setTimeout(()=>setCopied(false),1500)}
   if(!active)return null;
   return <section className="translator-workspace" id="translator" ref={dialog} role="dialog" aria-modal="true" aria-labelledby="translator-title">

@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+
+export const dynamic = "force-static";
 import { createAuthenticatedClient } from "@/lib/supabase/authenticated";
 
 export async function POST(request: Request) {

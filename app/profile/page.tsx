@@ -7,6 +7,7 @@ import { PageShell } from "@/components/PageShell";
 import { accentOptions, CustomSelect, dailyGoalOptions, levelOptions, occupationOptions } from "@/components/CustomSelect";
 import { useAuth } from "@/lib/hooks/use-auth";
 import { TaskOverlayBridge, useTaskOverlay } from "@/components/TaskOverlay";
+import { apiUrl } from "@/lib/runtime-api";
 
 export default function ProfilePage() {
   const { user, profile, supabase, loading } = useAuth();
@@ -40,7 +41,7 @@ export default function ProfilePage() {
     setUploadError("");
     try {
       const { data: sessionData } = await supabase.auth.getSession();
-      const signatureResponse = await fetch("/api/avatar/signature", {
+      const signatureResponse = await fetch(apiUrl("/api/avatar/signature"), {
         method: "POST",
         headers: { Authorization: `Bearer ${sessionData.session?.access_token || ""}` },
       });

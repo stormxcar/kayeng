@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 
+export const dynamic = "force-static";
+
 const allowed=new Set(["image/jpeg","image/png","image/webp","application/pdf"]);
 export async function POST(request:Request){
   const apiKey=process.env.OCR_SPACE_API_KEY;
