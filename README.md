@@ -1,98 +1,86 @@
-# vinext-starter
+# 🇬🇧 Kayeng English - Ứng Dụng Học Tiếng Anh Thông Minh
 
-A clean full-stack starter running on
-[vinext](https://github.com/cloudflare/vinext), with optional Cloudflare D1 and
-Drizzle support.
+**Kayeng English** là ứng dụng học tiếng Anh đa nền tảng (Web / Android App) được tích hợp công nghệ AI tiên tiến, hỗ trợ học từ vựng theo lặp lại ngắt quãng (FSRS), luyện phát âm chuẩn AI, dịch thuật và đọc chữ từ hình ảnh (OCR).
 
-## Prerequisites
+---
 
-- Node.js `>=22.13.0`
+## ✨ Tính Năng Nổi Bật
 
-## Quick Start
+- 🗣️ **Luyện Phát Âm AI (Azure Speech):** Đánh giá phát âm chuẩn từng từ, độ lưu khoát và độ chính xác của người học.
+- 🧠 **Thuật Toán Ghi Nhớ FSRS (`ts-fsrs`):** Tối ưu hóa thời gian ôn tập từ vựng theo phương pháp Lặp lại ngắt quãng (Spaced Repetition).
+- 🌐 **Dịch Thuật Anh - Việt:** Tích hợp bộ dịch song song MyMemory & LibreTranslate.
+- 📷 **Nhận Diện Chữ Từ Ảnh (OCR):** Quét văn bản tiếng Anh từ tệp hình ảnh / PDF qua `OCR.Space`.
+- 📱 **Ứng Dụng Di Động Android:** Đóng gói ứng dụng native qua Capacitor & Tự động xuất file APK trên GitHub Actions.
+- ⚡ **Hiệu Năng Cao:** Xây dựng trên Next.js 16 / ViNext, React 19, TailwindCSS v4 và Supabase.
 
+---
+
+## 🚀 Hướng Dẫn Chạy Dự Án (Local Development)
+
+### 1. Cài đặt môi trường
+- **Node.js**: phiên bản `>= 22.13.0`
+
+### 2. Cài đặt dependencies
 ```bash
 npm install
+```
+
+### 3. Cấu hình biến môi trường (`.env`)
+Tạo file `.env` tại thư mục gốc dự án và điền các API key:
+```env
+NEXT_PUBLIC_SUPABASE_URL=https://your-supabase-url.supabase.co
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=your-supabase-publishable-key
+NEXT_PUBLIC_APP_URL=http://localhost:3000
+
+# Azure Speech Services (Gói Free F0)
+AZURE_SPEECH_KEY=your-azure-speech-key
+AZURE_SPEECH_REGION=eastasia
+
+# Cloudinary (Lưu trữ media)
+CLOUDINARY_CLOUD_NAME=your-cloud-name
+CLOUDINARY_API_KEY=your-api-key
+CLOUDINARY_API_SECRET=your-api-secret
+
+# OCR & Translate
+LIBRETRANSLATE_URL=
+LIBRETRANSLATE_API_KEY=
+OCR_SPACE_API_KEY=your-ocr-space-key
+```
+
+### 4. Chạy ứng dụng chế độ dev
+```bash
 npm run dev
-npm run build
 ```
+Mở trình duyệt tại đường dẫn: `http://localhost:3000`
 
-This starter does not use `wrangler.jsonc`.
+---
 
-## Included Shape
+## 📱 Tự Động Build File APK Qua GitHub Actions
 
-- edit site code under `app/`
-- `.openai/hosting.json` declares optional Sites D1 and R2 bindings
-- `vite.config.ts` simulates declared bindings for local development
-- `db/schema.ts` starts intentionally empty
-- `examples/d1/` contains an optional D1 example surface
-- `drizzle.config.ts` supports local migration generation when needed
+Dự án đã được tích hợp quy trình **CI/CD Tự động xuất file APK** mỗi khi bạn push code lên GitHub mà không cần cài Android Studio trên máy local:
 
-## Workspace Auth Headers
+1. Đẩy code lên GitHub:
+   ```bash
+   git add .
+   git commit -m "update: your message"
+   git push origin main
+   ```
+2. Truy cập vào kho chứa GitHub $\rightarrow$ chọn tab **Actions**.
+3. Chọn workflow **Build Android APK** $\rightarrow$ chờ khoảng 2 phút cho đến khi có dấu tích xanh `✓`.
+4. Bấm vào lượt build đó và tải file **`kayeng-english-apk`** tại mục **Artifacts** ở cuối trang.
 
-OpenAI workspace sites can read the current user's email from
-`oai-authenticated-user-email`.
+---
 
-SIWC-authenticated workspace sites may also receive
-`oai-authenticated-user-full-name` when the user's SIWC profile has a non-empty
-`name` claim. The full-name value is percent-encoded UTF-8 and is accompanied by
-`oai-authenticated-user-full-name-encoding: percent-encoded-utf-8`.
+## 🛠️ Công Nghệ Sử Dụng (Tech Stack)
 
-Treat the full name as optional and fall back to email when it is absent:
+- **Frontend / Framework:** Next.js 16, React 19, TailwindCSS v4, Lucide React
+- **Mobile Shell:** Capacitor 8 (`@capacitor/android`)
+- **Database & Auth:** Supabase (`@supabase/supabase-js`), Drizzle ORM
+- **AI Services:** Azure Cognitive Speech Services, OCR.Space API, LibreTranslate / MyMemory API
+- **Spaced Repetition:** `ts-fsrs`
 
-```tsx
-import { headers } from "next/headers";
+---
 
-export default async function Home() {
-  const requestHeaders = await headers();
-  const email = requestHeaders.get("oai-authenticated-user-email");
-  const encodedFullName = requestHeaders.get("oai-authenticated-user-full-name");
-  const fullName =
-    encodedFullName &&
-    requestHeaders.get("oai-authenticated-user-full-name-encoding") ===
-      "percent-encoded-utf-8"
-      ? decodeURIComponent(encodedFullName)
-      : null;
+## 📝 License
 
-  const displayName = fullName ?? email;
-  // ...
-}
-```
-
-## Optional Dispatch-Owned ChatGPT Sign-In
-
-Import the ready-to-use helpers from `app/chatgpt-auth.ts` when the site needs
-optional or required ChatGPT sign-in:
-
-- Use `getChatGPTUser()` for optional signed-in UI.
-- Use `requireChatGPTUser(returnTo)` for server-rendered pages that should send
-  anonymous visitors through Sign in with ChatGPT.
-- Use `chatGPTSignInPath(returnTo)` and `chatGPTSignOutPath(returnTo)` for
-  browser links or actions.
-- Pass a same-origin relative `returnTo` path for the destination after sign-in
-  or sign-out. The helper validates and safely encodes it.
-- Mark protected pages with `export const dynamic = "force-dynamic"` because
-  they depend on per-request identity headers.
-
-Dispatch owns `/signin-with-chatgpt`, `/signout-with-chatgpt`, `/callback`, the
-OAuth cookies, and identity header injection. Do not implement app routes for
-those reserved paths. Routes that do not import and call the helper remain
-anonymous-compatible.
-
-SIWC establishes identity only; it does not prove workspace membership. Use the
-Sites hosting platform's access policy controls for workspace-wide restrictions,
-or enforce explicit server-side membership or allowlist checks.
-
-Use SIWC for account pages, user-specific dashboards, saved records, and write
-actions tied to the current ChatGPT user. Leave public content anonymous.
-
-## Useful Commands
-
-- `npm run dev`: start local development
-- `npm run build`: verify the vinext build output
-- `npm test`: build the starter and verify its rendered loading skeleton
-- `npm run db:generate`: generate Drizzle migrations after schema changes
-
-## Learn More
-
-- [vinext Documentation](https://github.com/cloudflare/vinext)
-- [Drizzle D1 Guide](https://orm.drizzle.team/docs/get-started/d1-new)
+Dự án phát triển bởi **StormXCar / Kayeng English**.
